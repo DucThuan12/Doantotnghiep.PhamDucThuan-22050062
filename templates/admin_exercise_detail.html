@@ -1,0 +1,788 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <div class="sidebar-top"><a class="brand-link" href="{{ url_for('home') }}"><div class="brand-badge small">FitMotion AI</div></a><p class="sidebar-sub">Quan tri he thong</p></div>
+        <nav class="sidebar-menu"><a class="menu-item" href="{{ url_for('admin_dashboard') }}">Dashboard</a><a class="menu-item" href="{{ url_for('admin_users') }}">Quan ly nguoi dung</a><a class="menu-item" href="{{ url_for('admin_emergency_alerts') }}">Canh bao khan cap</a><a class="menu-item active" href="{{ url_for('admin_exercises') }}">Quan ly bai tap</a><a class="menu-item" href="{{ url_for('admin_programs') }}">Quan ly giao an</a></nav>
+    </aside>
+    <section class="admin-content">
+        <header class="admin-topbar"><div><p class="panel-tag">Quan ly bai tap</p><h1>{{ exercise.name }}</h1></div><div class="admin-topbar-actions">{% include '_admin_notification_bell.html' %}<div class="user-menu glass-chip"><span>{{ user.name }}</span><a href="{{ url_for('logout') }}">Dang xuat</a></div></div></header>
+        {% with messages = get_flashed_messages() %}{% if messages %}<div class="flash-box">{% for msg in messages %}<p>{{ msg }}</p>{% endfor %}</div>{% endif %}{% endwith %}
+
+        <!-- THONG TIN CO BAN -->
+        <section class="section-two-col">
+            <div class="panel">
+                <div class="panel-head"><div><p class="panel-tag">Thong tin co ban</p><h2>Cap nhat bai tap</h2></div><a class="btn btn-outline" href="{{ url_for('admin_exercises') }}">Danh sach</a></div>
+                <form method="POST" enctype="multipart/form-data" class="admin-form">
+                    <div class="form-grid two-col">
+                        <div><label>Ten bai tap</label><input type="text" name="name" value="{{ exercise.name }}" required></div>
+                        <div><label>Slug</label><input type="text" name="slug" value="{{ exercise.slug }}" required></div>
+                        <div><label>Nhom co</label><input type="text" name="muscle_group" value="{{ exercise.muscle_group }}"></div>
+                        <div><label>Do kho</label><select name="difficulty">{% for level in ['Co ban','Trung binh','Nang cao'] %}<option value="{{ level }}" {% if exercise.difficulty == level %}selected{% endif %}>{{ level }}</option>{% endfor %}</select></div>
+                        <div><label>Tuoi toi thieu</label><input type="number" name="age_min" value="{{ exercise.age_min }}" min="1" max="120"></div>
+                        <div><label>Tuoi toi da</label><input type="number" name="age_max" value="{{ exercise.age_max }}" min="1" max="120"></div>
+                        <div><label>Calo / rep</label><input type="number" step="0.01" name="calories" value="{{ exercise.calories }}" min="0"></div>
+                        <div><label>Che do ben</label><select name="side_mode"><option value="none" {% if exercise.side_mode == 'none' %}selected{% endif %}>Khong chia ben</option><option value="left" {% if exercise.side_mode == 'left' %}selected{% endif %}>Tay trai</option><option value="right" {% if exercise.side_mode == 'right' %}selected{% endif %}>Tay phai</option></select></div>
+                        <div class="full-col"><label>Mo ta</label><textarea name="description">{{ exercise.description }}</textarea></div>
+                        <div class="full-col"><label>Huong dan ky thuat</label><textarea name="guide_text">{{ exercise.guide_text }}</textarea></div>
+                        <div class="full-col"><label>Phu hop voi</label><textarea name="suitable_for">{{ exercise.suitable_for }}</textarea></div>
+                        <div class="full-col"><label>Can than trong voi</label><textarea name="caution_for">{{ exercise.caution_for }}</textarea></div>
+                        <div><label>Anh xem truoc moi</label><input type="file" name="preview_image" accept=".jpg,.jpeg,.png,.webp,image/*"></div>
+                        <div><label>Mô hình Mixamo FBX/GLB chính</label><input type="file" name="model_3d_file" accept=".fbx,.glb,.gltf"><small>Asset thật cần có mesh, texture, rig và animation. GLB được kiểm tra mesh, texture, rig và animation trước khi lưu.</small></div>
+                        <div><label>Animation key chinh</label><input type="text" name="animation_key" value="{{ exercise.animation_key or exercise.slug }}"><small>Voi bo Remy: squat, pushup, curl-left, curl-right.</small></div>
+                        {% if exercise.slug == 'pushup' %}
+                        <div><label>Animation mo dau Push-up</label><input type="file" name="intro_model_3d_file" accept=".fbx,.glb,.gltf"><small>Chay dung — plank dung 1 lan, roi chuyen sang Push-up chinh.</small></div>
+                        <div><label>Animation key mo dau</label><input type="text" name="intro_animation_key" value="{{ exercise.intro_animation_key or 'pushup-intro' }}" placeholder="pushup-intro"></div>
+                        {% endif %}
+                        <div class="checkbox-field"><label><input type="checkbox" name="is_active" {% if exercise.is_active %}checked{% endif %}> Cho phep nguoi dung tap bai nay</label></div>
+                        {% if model_config.path %}<div class="checkbox-field"><label><input type="checkbox" name="remove_model"> Go mo hinh chinh va reference tu sinh</label></div>{% endif %}
+                        {% if model_config.intro_path %}<div class="checkbox-field"><label><input type="checkbox" name="remove_intro_model"> Go animation mo dau</label></div>{% endif %}
+                    </div>
+                    <div class="admin-form-actions">
+                        <button type="submit" class="btn btn-primary">Luu cap nhat</button>
+                        <a class="btn btn-outline" href="{{ url_for('user_workout', slug=exercise.slug) }}">Xem trang luyen tap</a>
+                    </div>
+                </form>
+                <form method="POST" action="{{ url_for('admin_delete_exercise', exercise_id=exercise.id) }}" onsubmit="return confirm('Xac nhan xoa bai tap nay?')" style="margin-top:12px;">
+                    <button type="submit" class="btn btn-danger btn-small">Xoa bai tap</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head"><div><p class="panel-tag">Tai nguyen</p><h2>Anh va mo hinh Mixamo 3D that</h2></div></div>
+                <div class="asset-preview-box">
+                    {% if exercise.preview_image %}<img src="{{ url_for('static', filename=exercise.preview_image) }}" class="preview-thumb" alt="Anh bai tap">{% else %}<div class="empty-box">Chua co anh xem truoc</div>{% endif %}
+                    <div class="criterion-card">
+                        {% if model_config.path %}
+                            <p><strong>Trang thai:</strong> <span class="status-badge success">Da gan mo hinh 3D that</span></p>
+                            <p><strong>Tep:</strong> {{ model_config.filename }}</p>
+                            <p><strong>Dinh dang:</strong> {{ 'GLB/GLTF' if model_config.format == 'gltf' else model_config.format|upper }}</p>
+                            <p><strong>Animation key:</strong> {{ model_config.animation_key }}</p>
+                            {% if model_config.intro_path %}<p><strong>Intro:</strong> {{ model_config.intro_filename }} - key <code>{{ model_config.intro_animation_key }}</code></p>
+                            {% elif exercise.slug == 'pushup' %}<p><strong>Intro:</strong> <span class="status-badge warning">Chua gan dung-plank</span></p>{% endif %}
+                        {% else %}
+                            <p><strong>Trang thai:</strong> <span class="status-badge warning">Chưa gắn mô hình</span></p>
+                            <p>Hay chon file <code>.glb</code> roi bam Luu cap nhat.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CHUAN DONG TAC 3D -->
+        <section class="panel">
+            <div class="panel-head"><div><p class="panel-tag">Chuan dong tac 3D</p><h2>Mixamo / Blender lam reference cham diem</h2></div></div>
+            <p class="form-help">Voi file GLB cua 4 bai cot loi, he thong tu doc skeleton Mixamo, lay chuoi goc tu chinh animation dang hien thi va sinh reference DTW. Chuan cham diem 3D va mo hinh nguoi dung nhin thay la cung mot animation.</p>
+            <div class="section-two-col">
+                <div class="criterion-card">
+                    <strong>Trang thai reference</strong>
+                    {% if model_config.reference_path %}
+                        <p>Nguon: <strong>{{ model_config.reference_source or '3D validated' }}</strong> - Version: <strong>{{ model_config.reference_version or '1' }}</strong></p>
+                        <p>Nguong khop toi thieu: <strong>{{ model_config.reference_min_score|round|int }}/100</strong></p>
+                    {% else %}<p>Chua gan reference cham diem.</p>{% endif %}
+                </div>
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin_reference_upload', exercise_id=exercise.id) }}" class="admin-form">
+                    <div class="form-grid two-col">
+                        <div><label>Reference JSON</label><input type="file" name="reference_motion_file" accept=".json,application/json"></div>
+                        <div><label>Diem khop toi thieu</label><input type="number" name="reference_min_score" value="{{ model_config.reference_min_score or 55 }}" min="0" max="100" step="1"></div>
+                        {% if model_config.reference_path %}<div class="checkbox-field full-col"><label><input type="checkbox" name="remove_reference"> Go reference hien tai</label></div>{% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Luu reference 3D</button>
+                </form>
+            </div>
+            <div class="criterion-card"><small>Luong moi voi GLB: Admin upload Mixamo/Blender GLB -> kiem tra mesh/skin/animation -> lay keyframe skeleton -> tinh goc chuan -> sinh reference JSON -> DTW so voi chuoi nguoi tap.</small></div>
+        </section>
+
+        <!-- CAP DO LUYEN TAP -->
+        <section class="panel">
+            <div class="panel-head"><div><p class="panel-tag">Cap do luyen tap</p><h2>Thiet lap De / Trung binh / Kho</h2></div></div>
+            <p class="form-help">Moi cap do gom ca khoi luong va dieu kien hieu qua cua toan buoi. Thoi gian nghi qua lau se lam huy session, khong tao lich su tap.</p>
+            <form method="POST" action="{{ url_for('admin_update_level_config', exercise_id=exercise.id) }}" class="admin-form">
+                <div class="exercise-table"><table>
+                    <thead><tr><th>Cap do</th><th>Set</th><th>Rep/set</th><th>Nghi goi y (s)</th><th>Huy neu nghi qua (s)</th><th>Thoi luong toi da (s)</th><th>Rep dat toi thieu (%)</th><th>Diem TB toi thieu</th><th>Confidence toi thieu (%)</th><th>Stability toi thieu</th><th>Mat tracking toi da</th></tr></thead>
+                    <tbody>
+                    {% for level_key, level_label in level_options %}
+                    {% set cfg = level_configs.get(level_key) %}
+                    {% set defaults = default_levels.get(level_key, {}) %}
+                    <tr>
+                        <td><strong>{{ level_label }}</strong></td>
+                        <td><input type="number" name="{{ level_key }}_set_count" value="{{ cfg.set_count if cfg else defaults.get('set_count', 1) }}" min="1" max="20"></td>
+                        <td><input type="number" name="{{ level_key }}_rep_target" value="{{ cfg.rep_target if cfg else defaults.get('rep_target', 10) }}" min="1" max="500"></td>
+                        <td><input type="number" name="{{ level_key }}_rest_seconds" value="{{ cfg.rest_seconds if cfg else defaults.get('rest_seconds', 30) }}" min="5" max="600"></td>
+                        <td><input type="number" name="{{ level_key }}_max_idle_seconds" value="{{ cfg.max_idle_seconds if cfg else defaults.get('max_idle_seconds', 180) }}" min="30" max="1800"></td>
+                        <td><input type="number" name="{{ level_key }}_max_session_seconds" value="{{ cfg.max_session_seconds if cfg else defaults.get('max_session_seconds', 1800) }}" min="60" max="7200"></td>
+                        <td><input type="number" step="0.1" name="{{ level_key }}_min_good_rep_percent" value="{{ ((cfg.min_good_rep_ratio if cfg else defaults.get('min_good_rep_ratio', 0.7)) * 100)|round(1) }}" min="0" max="100"></td>
+                        <td><input type="number" step="0.1" name="{{ level_key }}_min_quality_score" value="{{ cfg.min_quality_score if cfg else defaults.get('min_quality_score', 50.0) }}" min="0" max="100"></td>
+                        <td><input type="number" step="0.1" name="{{ level_key }}_min_confidence_percent" value="{{ ((cfg.min_confidence if cfg else defaults.get('min_confidence', 0.55)) * 100)|round(1) }}" min="0" max="100"></td>
+                        <td><input type="number" step="0.1" name="{{ level_key }}_min_stability_score" value="{{ cfg.min_stability_score if cfg else defaults.get('min_stability_score', 45.0) }}" min="0" max="100"></td>
+                        <td><input type="number" name="{{ level_key }}_max_tracking_abort_count" value="{{ cfg.max_tracking_abort_count if cfg else defaults.get('max_tracking_abort_count', 4) }}" min="0" max="50"></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table></div>
+                <div class="admin-form-actions"><button type="submit" class="btn btn-primary">Luu cau hinh cap do</button></div>
+            </form>
+        </section>
+
+        <!-- AI HUAN LUYEN: 2-COLUMN LAYOUT WITH RIGHT PREVIEW LANE -->
+        <section class="panel" id="trainingSection">
+            <div class="panel-head">
+                <div><p class="panel-tag">Huan luyen AI</p><h2>Dataset va Mo hinh Nhan dien Tu the</h2></div>
+                <span class="status-badge {% if training_validation.ready %}success{% else %}warning{% endif %}" id="datasetReadyBadge">
+                    {% if training_validation.ready %}Du du lieu huan luyen{% else %}Can them du lieu{% endif %}
+                </span>
+            </div>
+
+            <!-- HUONG DAN 4 BUOC -->
+            <div class="training-steps-guide">
+                <div class="step-card"><span class="step-badge">1</span><div><strong>Thu thap anh/video</strong><br>Moi trang thai can toi thieu <strong>{{ training_validation.minimum_sources_per_label }}</strong> tep nguon doc lap (anh chup nhieu goc hoac video quay ro dong tac).</div></div>
+                <div class="step-card"><span class="step-badge">2</span><div><strong>Upload vao dung o label</strong><br>Keo tha hoac chon nhieu file mot luc vao tung o ben duoi. He thong tu luu vao <code>data/pose_training/</code>.</div></div>
+                <div class="step-card"><span class="step-badge">3</span><div><strong>Bam Huan luyen tren web</strong><br>Server trich 17 keypoint YOLO, train mang PyTorch MLP va danh gia tren tap Test doc lap.</div></div>
+                <div class="step-card"><span class="step-badge">4</span><div><strong>Kiem tra ket qua</strong><br>Model dat Test Accuracy >= 70% se tu dong duoc kich hoat tham gia cham diem realtime.</div></div>
+            </div>
+
+            <!-- NGUON DU LIEU COLLAPSIBLE -->
+            <details class="data-source-guide" style="margin-bottom:20px;">
+                <summary><strong>Huong dan cac nguon lay anh/video de train</strong></summary>
+                <div class="source-grid">
+                    <div class="source-card"><strong>Roboflow Universe</strong><p>Tim dataset gym, fitness pose theo tung bai tap tren Universe Roboflow.</p><a href="https://universe.roboflow.com/" target="_blank" class="source-link">universe.roboflow.com</a></div>
+                    <div class="source-card"><strong>Chup anh thu cong</strong><p>Dung webcam hoac dien thoai chup tu 15-30 anh moi pha o nhieu goc nhin khac nhau.</p></div>
+                    <div class="source-card"><strong>Upload video truc tiep</strong><p>Quay 1 video 30 giay - he thong tu trich moi 5 frame thanh hang chuc mau da dang.</p></div>
+                    <div class="source-card"><strong>YouTube qua yt-dlp</strong><p>Tai video huong dan tap chuan tu YouTube roi upload MP4 len he thong.</p><code>yt-dlp -f mp4 &lt;URL&gt;</code></div>
+                </div>
+            </details>
+
+            <!-- 2-COLUMN WORKSPACE: LEFT = UPLOAD & TRAIN, RIGHT = PREVIEW GALLERY LANE -->
+            <div class="training-dual-layout">
+                <!-- LEFT COLUMN: DROPZONES & ACTIONS -->
+                <div class="training-left-col">
+                    <div class="training-labels-wrap" id="trainingLabelGrid">
+                        {% for label in training_validation.required_labels %}
+                        <div class="label-upload-zone" id="zone-{{ label }}" data-label="{{ label }}">
+                            <div class="label-zone-head">
+                                <div class="label-zone-title">
+                                    <span class="label-badge">{{ loop.index }}</span>
+                                    <strong>{{ label }}</strong>
+                                    <span class="label-desc">
+                                        {% if 'start' in label %}(Chuan bi / bat dau)
+                                        {% elif 'middle' in label %}(Giua dong tac / dinh luc)
+                                        {% elif 'end' in label %}(Ket thuc / tro ve)
+                                        {% else %}(Trang thai khac){% endif %}
+                                    </span>
+                                </div>
+                                <span class="label-count-badge {% if training_validation.counts.get(label, 0) >= training_validation.minimum_sources_per_label %}label-count-ok{% endif %}" id="count-{{ label }}">
+                                    {{ training_validation.counts.get(label, 0) }}/{{ training_validation.minimum_sources_per_label }} tep
+                                </span>
+                            </div>
+                            <form method="POST"
+                                  enctype="multipart/form-data"
+                                  action="{{ url_for('admin_training_media_upload', exercise_id=exercise.id) }}"
+                                  class="label-upload-form" id="form-{{ label }}">
+                                <input type="hidden" name="label_name" value="{{ label }}">
+                                <div class="dropzone" id="drop-{{ label }}">
+                                    <div class="dropzone-inner">
+                                        <div class="dropzone-icon">+</div>
+                                        <p>Keo tha anh/video vao day hoac</p>
+                                        <label class="btn btn-outline btn-small" for="file-{{ label }}">Chon nhieu file</label>
+                                        <input type="file" id="file-{{ label }}" name="training_media" multiple
+                                               accept="image/*,video/*,.mp4,.avi,.mov,.mkv,.webm,.jpg,.jpeg,.png,.webp"
+                                               style="display:none">
+                                        <small>JPG, PNG, WEBP, MP4, AVI, MOV - toi da 50MB/file</small>
+                                    </div>
+                                </div>
+                                <div class="upload-progress" id="progress-{{ label }}" style="display:none">
+                                    <div class="progress-bar-track"><div class="progress-bar-fill" id="bar-{{ label }}"></div></div>
+                                    <span id="progress-text-{{ label }}">Dang tai len...</span>
+                                </div>
+                            </form>
+                        </div>
+                        {% endfor %}
+
+                        {% if 'other' in training_labels %}
+                        <div class="label-upload-zone optional-zone" id="zone-other" data-label="other">
+                            <div class="label-zone-head">
+                                <div class="label-zone-title">
+                                    <span class="label-badge optional">+</span>
+                                    <strong>other</strong>
+                                    <span class="label-desc">(Tuy chon - anh khac)</span>
+                                </div>
+                                <span class="label-count-badge" id="count-other">{{ training_validation.counts.get('other', 0) }} tep</span>
+                            </div>
+                            <form method="POST" enctype="multipart/form-data"
+                                  action="{{ url_for('admin_training_media_upload', exercise_id=exercise.id) }}"
+                                  class="label-upload-form" id="form-other">
+                                <input type="hidden" name="label_name" value="other">
+                                <div class="dropzone" id="drop-other">
+                                    <div class="dropzone-inner">
+                                        <div class="dropzone-icon">+</div>
+                                        <p>Anh/video khong thuoc bai tap nay</p>
+                                        <label class="btn btn-outline btn-small" for="file-other">Chon file</label>
+                                        <input type="file" id="file-other" name="training_media" multiple
+                                               accept="image/*,video/*,.mp4,.avi,.mov,.mkv,.webm" style="display:none">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- ACTION CARD -->
+                    <div class="training-action-card" id="trainingStatusCard"
+                         data-status-url="{{ url_for('admin_exercise_training_status', exercise_id=exercise.id) }}"
+                         data-train-url="{{ url_for('admin_train_exercise_model', exercise_id=exercise.id) }}"
+                         data-list-url="{{ url_for('admin_training_media_list', exercise_id=exercise.id) }}"
+                         data-delete-base="/admin/bai-tap/{{ exercise.id }}/training-media-delete/"
+                         data-preview-base="/admin/bai-tap/{{ exercise.id }}/training-media-preview/">
+                        <div class="training-status-row">
+                            <div><strong>Trang thai mo hinh:</strong> <span class="status-badge" id="trainingStatusBadge">{{ exercise.pose_model_status or 'chua huan luyen' }}</span></div>
+                            <div><strong>Test accuracy:</strong> <span id="trainingAccuracy">{% if exercise.pose_model_accuracy %}{{ (exercise.pose_model_accuracy * 100)|round(2) }}%{% else %}--{% endif %}</span> <span class="form-help">(cong realtime: 70%)</span></div>
+                        </div>
+                        <div class="training-progress-bar-wrap" id="trainingProgressWrap" style="display:none">
+                            <div class="training-progress-bar-track"><div class="training-progress-bar-fill" id="trainingProgressBar"></div></div>
+                            <span id="trainingProgressLabel">Dang huan luyen - vui long doi...</span>
+                        </div>
+                        <p id="trainingStatusText" class="form-help">
+                            {% if exercise.pose_model_status == 'ready' %}Mo hinh da qua test doc lap va duoc phep dung realtime.
+                            {% elif exercise.pose_model_status == 'training' %}Server dang trich keypoint va huan luyen. Khong tat tien trinh Python.
+                            {% elif exercise.pose_model_status == 'trained_below_gate' %}Mo hinh da train nhung chua vuot cong test 70%.
+                            {% elif exercise.pose_model_status == 'error' %}Lan train gan nhat bi loi.
+                            {% else %}Chua huan luyen mo hinh cho bai nay.{% endif %}
+                        </p>
+                        <p id="trainingError" class="form-help" style="color:#f87171">{{ exercise.pose_model_error or training_validation.message }}</p>
+                        <div class="training-btn-row">
+                            <button type="button" class="btn btn-primary btn-large" id="trainModelButton"
+                                    {% if not training_validation.ready or exercise.pose_model_status == 'training' %}disabled{% endif %}>
+                                Huấn luyện mô hình trên web
+                            </button>
+                            <small>Moi bai luu checkpoint rieng tai <code>models/pose_{{ exercise.id }}.pth</code>. Server chi bat model realtime khi dat cong chat luong 70%.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: DEDICATED PREVIEW GALLERY LANE (ĐƯỜNG BIÊN BÊN PHẢI) -->
+                <div class="training-right-lane">
+                    <div class="right-lane-header">
+                        <h3>Thu vien anh da them (<span id="sidebarCount">{{ training_media|length }}</span>)</h3>
+                        <p class="form-help" style="margin:2px 0 8px;">Bam vao anh de xem phong to chi tiet hoac xoa anh khong dat.</p>
+                        <div class="filter-pills-row" id="mediaFilterPills">
+                            <button type="button" class="filter-pill active" data-filter="all">Tat ca</button>
+                            {% for label in training_validation.required_labels %}
+                            <button type="button" class="filter-pill" data-filter="{{ label }}">{{ label.split('_')[-1] }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- DETAILED ACTIVE IMAGE VIEWER -->
+                    <div class="sidebar-active-viewer" id="sidebarActiveViewer" style="display:none;">
+                        <div class="viewer-img-box">
+                            <img id="viewerImg" src="" alt="Xem chi tiet">
+                        </div>
+                        <div class="viewer-info-box">
+                            <span class="label-pill" id="viewerLabel">label</span>
+                            <span class="viewer-name" id="viewerName">filename.jpg</span>
+                            <button type="button" class="btn btn-danger btn-small" id="viewerDelBtn">Xoa tep nay</button>
+                        </div>
+                    </div>
+
+                    <!-- SCROLLABLE THUMBNAILS CONTAINER -->
+                    <div class="sidebar-thumbs-scroll" id="sidebarThumbsScroll">
+                        {% for item in training_media %}
+                        <div class="sidebar-thumb-card" data-mid="{{ item.id }}" data-label="{{ item.label_name }}" data-type="{{ item.media_type }}" data-name="{{ item.source_name or item.file_path }}" data-url="/admin/bai-tap/{{ exercise.id }}/training-media-preview/{{ item.id }}">
+                            {% if item.media_type == 'image' %}
+                            <img src="/admin/bai-tap/{{ exercise.id }}/training-media-preview/{{ item.id }}" loading="lazy" alt="{{ item.source_name }}">
+                            {% else %}
+                            <div class="video-thumb-icon">VIDEO</div>
+                            {% endif %}
+                            <div class="thumb-meta">
+                                <span class="thumb-label-badge">{{ item.label_name.split('_')[-1] }}</span>
+                                <span class="thumb-name-text">{{ item.source_name or item.file_path }}</span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="empty-gallery-msg" id="emptyGalleryMsg">Chua co anh/video nao. Keo tha tep vao cac o ben trai de tai len.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- BANG DU LIEU GOC -->
+            <div class="sub-table" style="margin-top:24px;">
+                <div class="sub-table-head">
+                    <h3>Bang du lieu chi tiet</h3>
+                    <button class="btn btn-outline btn-small" id="refreshMediaBtn">Lam moi danh sach</button>
+                </div>
+                <div id="mediaTableWrap">
+                    <div class="exercise-table small-table"><table>
+                        <thead><tr><th>Label</th><th>Loai</th><th>Ten file nguon</th><th>Thoi gian</th><th>Xoa</th></tr></thead>
+                        <tbody id="mediaTableBody">
+                        {% for item in training_media %}
+                        <tr id="mrow-{{ item.id }}">
+                            <td><span class="label-pill">{{ item.label_name }}</span></td>
+                            <td>{{ item.media_type }}</td>
+                            <td>{{ item.source_name or item.file_path }}</td>
+                            <td>{{ item.created_at.strftime('%d/%m %H:%M') if item.created_at else '' }}</td>
+                            <td><button class="btn btn-danger btn-small del-media-btn" data-mid="{{ item.id }}">Xoa</button></td>
+                        </tr>
+                        {% else %}
+                        <tr id="mrow-empty"><td colspan="5">Chua co anh/video train cho bai nay. Upload anh/video o cac vung ben tren.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- HE CHUYEN GIA: TIEU CHI DONG TAC & AM THANH TTS -->
+        <section class="panel">
+            <div class="panel-head"><div><p class="panel-tag">He chuyen gia</p><h2>Tieu chi danh gia, canh bao loi & Am thanh giong noi</h2></div></div>
+            <p class="form-help">Moi tieu chi la mot luat goc 3 diem A-B-C. Khi luu, he thong tu dong sinh file am thanh tieng Viet (.wav) de phat canh bao khi nguoi dung tap sai tu the.</p>
+            <div class="exercise-table small-table"><table>
+                <thead><tr><th>Tieu de</th><th>Keypoints (A-B-C)</th><th>Toan tu</th><th>Nguong</th><th>Thong bao loi (tao am thanh)</th><th>Pha</th><th>Am thanh WAV</th><th>Thao tac</th></tr></thead>
+                <tbody>
+                {% for c in criteria %}
+                <tr>
+                    <td><strong>{{ c.title }}</strong><br><small>{{ c.error_code }}</small></td>
+                    <td>{{ c.joint_name }}</td>
+                    <td><code>{{ c.operator }}</code></td>
+                    <td>{{ c.angle_value }}°</td>
+                    <td>{{ c.message_text }}</td>
+                    <td><span class="label-pill">{{ c.phase }}</span></td>
+                    <td>
+                        {% if c.audio_path %}
+                            <span class="status-badge success">Da co WAV</span>
+                            <br><small><audio controls src="{{ url_for('static', filename=c.audio_path) }}" style="max-width:140px; height:24px; margin-top:4px;"></audio></small>
+                        {% else %}
+                            <span class="status-badge warning">Chua co audio</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_regenerate_criterion_audio', criterion_id=c.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-outline btn-small">Tạo lại âm thanh</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8">Chua co tieu chi nao duoc thiet lap.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+
+            <h3 style="margin-top:24px; margin-bottom:12px;">Them tieu chi danh gia moi</h3>
+            <form method="POST" action="{{ url_for('admin_add_criterion', exercise_id=exercise.id) }}" class="admin-form">
+                <div class="form-grid two-col">
+                    <div><label>Tieu de tieu chi *</label><input type="text" name="title" placeholder="Vi du: Ha hong chua du sau" required></div>
+                    <div><label>Ma loi (Slug code)</label><input type="text" name="error_code" placeholder="notlow / bodyline / elbowshift"></div>
+                    <div><label>Keypoint A (Dau)</label><input type="number" name="joint_a" placeholder="11 (Hip)" min="0" max="16" required></div>
+                    <div><label>Keypoint B (Dinh goc danh gia) *</label><input type="number" name="joint_b" placeholder="13 (Knee)" min="0" max="16" required></div>
+                    <div><label>Keypoint C (Cuoi)</label><input type="number" name="joint_c" placeholder="15 (Ankle)" min="0" max="16" required></div>
+                    <div><label>Ten khop mo ta</label><input type="text" name="joint_name" placeholder="Hip - Knee - Ankle"></div>
+                    <div><label>Toan tu so sanh</label><select name="operator"><option value="<=">&lt;= (Nho hon hoac bang)</option><option value=">=">&gt;= (Lon hon hoac bang)</option><option value="<">&lt; (Nho hon)</option><option value=">">&gt; (Lon hon)</option></select></div>
+                    <div><label>Nguong goc danh gia (Do) *</label><input type="number" step="0.1" name="angle_value" placeholder="90.0" required></div>
+                    <div><label>Pha ap dung</label><select name="phase"><option value="middle">middle (Dinh luc)</option><option value="start">start (Bat dau)</option><option value="end">end (Ket thuc)</option><option value="any">any (Bat ky luc nao)</option></select></div>
+                    <div class="full-col"><label>Thong bao loi giong noi (TTS se tu tao file .wav) *</label><textarea name="message_text" placeholder="Vi du: Tay qua cao vui long ha thap xuong" required></textarea></div>
+                    <div class="full-col"><label>Huong dan sua loi chi tiet</label><textarea name="advice_text" placeholder="Giu khu tay co dinh sat than nguoi va ha cham"></textarea></div>
+                </div>
+                <div class="admin-form-actions"><button type="submit" class="btn btn-primary">Luu tieu chi & tao am thanh</button></div>
+            </form>
+        </section>
+    </section>
+</div>
+
+<style>
+/* 2-Column Training Layout */
+.training-dual-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; margin-top: 18px; }
+@media (max-width: 1100px) { .training-dual-layout { grid-template-columns: 1fr; } }
+.training-left-col { min-width: 0; }
+.training-right-lane {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    max-height: 720px;
+}
+.right-lane-header h3 { font-size: 14px; color: #f1f5f9; margin: 0; }
+.filter-pills-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-pill {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(148,163,184,0.2);
+    color: #94a3b8;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.filter-pill:hover, .filter-pill.active { background: #4f46e5; border-color: #6366f1; color: #fff; }
+
+/* Active Viewer inside sidebar */
+.sidebar-active-viewer {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+.viewer-img-box { width: 100%; height: 180px; overflow: hidden; border-radius: 6px; background: #090d16; display: flex; align-items: center; justify-content: center; }
+.viewer-img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer-info-box { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 8px; }
+.viewer-name { font-size: 11px; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+
+/* Scrollable thumbnails */
+.sidebar-thumbs-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding-right: 4px;
+}
+.sidebar-thumb-card {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.sidebar-thumb-card:hover, .sidebar-thumb-card.selected { border-color: #6366f1; transform: scale(1.03); }
+.sidebar-thumb-card img { width: 100%; height: 100%; object-fit: cover; }
+.video-thumb-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #818cf8; background: rgba(99, 102, 241, 0.1); }
+.thumb-meta {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    padding: 2px 4px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+}
+.thumb-label-badge { color: #a5b4fc; font-weight: 600; }
+.thumb-name-text { color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50px; }
+.empty-gallery-msg { grid-column: 1 / -1; font-size: 12px; color: #64748b; text-align: center; padding: 30px 10px; }
+
+/* Training guide steps */
+.training-steps-guide { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 900px) { .training-steps-guide { grid-template-columns: 1fr 1fr; } }
+.step-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(148,163,184,0.1); border-radius: 8px; padding: 12px; font-size: 12px; display: flex; gap: 10px; align-items: flex-start; }
+.step-badge { width: 22px; height: 22px; border-radius: 50%; background: #4f46e5; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.source-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 0; }
+@media (max-width: 900px) { .source-grid { grid-template-columns: 1fr 1fr; } }
+.source-card { background: rgba(0,0,0,0.2); border: 1px solid rgba(148,163,184,0.1); border-radius: 6px; padding: 10px; font-size: 11px; color: #94a3b8; }
+.source-card strong { color: #f1f5f9; display: block; margin-bottom: 4px; }
+.source-link { color: #818cf8; text-decoration: none; font-size: 11px; }
+
+/* Label upload zones */
+.training-labels-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 750px) { .training-labels-wrap { grid-template-columns: 1fr; } }
+.label-upload-zone { background: rgba(255,255,255,0.02); border: 1px solid rgba(148,163,184,0.12); border-radius: 8px; padding: 12px; }
+.label-zone-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.label-zone-title { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #a5b4fc; }
+.label-desc { font-size: 10px; color: #64748b; }
+.label-count-badge { font-size: 11px; background: rgba(148,163,184,0.1); padding: 2px 8px; border-radius: 12px; color: #94a3b8; }
+.label-count-badge.label-count-ok { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+/* Dropzones */
+.dropzone { border: 2px dashed rgba(148,163,184,0.25); border-radius: 6px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; }
+.dropzone:hover, .dropzone.drag-over { border-color: #6366f1; background: rgba(99,102,241,0.06); }
+.dropzone-inner { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #64748b; }
+.dropzone-icon { font-size: 20px; font-weight: 300; color: #475569; }
+
+/* Progress bar */
+.upload-progress { margin-top: 8px; }
+.progress-bar-track { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+.progress-bar-fill { height: 100%; background: #4f46e5; width: 0%; transition: width 0.2s ease; }
+.upload-progress span { font-size: 10px; color: #818cf8; }
+
+/* Training Action Card */
+.training-action-card { background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.training-status-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+.training-progress-bar-wrap { margin: 10px 0; }
+.training-progress-bar-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.training-progress-bar-fill { height: 100%; background: #6366f1; width: 0%; transition: width 0.3s ease; }
+.training-btn-row { margin-top: 12px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+</style>
+
+<script>
+(() => {
+    const card = document.getElementById('trainingStatusCard');
+    if (!card) return;
+    const statusUrl = card.dataset.statusUrl;
+    const trainUrl = card.dataset.trainUrl;
+    const listUrl = card.dataset.listUrl;
+    const deleteBase = card.dataset.deleteBase;
+    const previewBase = card.dataset.previewBase;
+
+    const button = document.getElementById('trainModelButton');
+    const badge = document.getElementById('trainingStatusBadge');
+    const accuracy = document.getElementById('trainingAccuracy');
+    const textEl = document.getElementById('trainingStatusText');
+    const error = document.getElementById('trainingError');
+    const progWrap = document.getElementById('trainingProgressWrap');
+    const progBar = document.getElementById('trainingProgressBar');
+
+    let currentMediaList = [];
+    let activeMid = null;
+    let polling = false;
+    let progressPct = 5;
+
+    // Status polling
+    function renderStatus(data) {
+        const status = String(data.status || 'not_trained');
+        badge.textContent = status;
+        accuracy.textContent = data.accuracy > 0 ? (Number(data.accuracy)*100).toFixed(2)+'%' : '--';
+        error.textContent = data.error || data.validation?.message || '';
+        const msgs = {
+            training: 'Server dang trich keypoint va huan luyen mo hinh cho bai nay...',
+            ready: 'Mo hinh da qua test doc lap va dang duoc phep tham gia nhan dien realtime.',
+            trained_below_gate: 'Mo hinh da luu nhung chua vuot cong test 70% nen chua dung realtime.',
+            error: 'Huan luyen that bai. Xem thong bao loi ben duoi.',
+            not_trained: 'Chua huan luyen mo hinh cho bai nay.'
+        };
+        textEl.textContent = msgs[status] || status;
+        button.disabled = status === 'training' || !data.validation?.ready;
+        button.textContent = status === 'training' ? 'Dang huan luyen...' : 'Huấn luyện mô hình trên web';
+
+        if (status === 'training') {
+            progWrap.style.display = '';
+            progressPct = Math.min(progressPct + 7, 90);
+            progBar.style.width = progressPct + '%';
+            schedulePoll();
+        } else {
+            progWrap.style.display = 'none';
+            progressPct = 5;
+        }
+
+        if (data.validation?.counts) {
+            const min = data.validation.minimum_sources_per_label || 5;
+            for (const [lbl, cnt] of Object.entries(data.validation.counts)) {
+                const el = document.getElementById('count-' + lbl);
+                if (el) {
+                    el.textContent = cnt + '/' + min + ' tep';
+                    el.classList.toggle('label-count-ok', cnt >= min);
+                }
+            }
+        }
+    }
+
+    async function loadStatus() {
+        try {
+            const r = await fetch(statusUrl, {cache:'no-store'});
+            if (r.ok) renderStatus(await r.json());
+        } catch(_){}
+    }
+
+    function schedulePoll() {
+        if (polling) return;
+        polling = true;
+        setTimeout(async () => { polling = false; await loadStatus(); }, 2500);
+    }
+
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        error.textContent = '';
+        progWrap.style.display = '';
+        progBar.style.width = '5%';
+        progressPct = 5;
+        try {
+            const r = await fetch(trainUrl, {
+                method: 'POST',
+                headers: {'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.message || 'HTTP '+r.status);
+            badge.textContent = 'training';
+            textEl.textContent = data.message || 'Da bat dau huan luyen.';
+            button.textContent = 'Dang huan luyen...';
+            schedulePoll();
+        } catch(exc) {
+            error.textContent = exc.message || String(exc);
+            button.disabled = false;
+            progWrap.style.display = 'none';
+        }
+    });
+
+    if (badge.textContent.trim() === 'training') schedulePoll();
+
+    // Drag & Drop + AJAX Multi-Upload
+    document.querySelectorAll('.label-upload-zone').forEach(zone => {
+        const lbl = zone.dataset.label;
+        const drop = zone.querySelector('.dropzone');
+        const fileInput = zone.querySelector('input[type=file]');
+        const form = zone.querySelector('form');
+        const progDiv = document.getElementById('progress-' + lbl);
+        const barEl = document.getElementById('bar-' + lbl);
+        const progTxt = document.getElementById('progress-text-' + lbl);
+
+        if (!drop || !fileInput || !form) return;
+
+        drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+        drop.addEventListener('drop', e => {
+            e.preventDefault(); drop.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) submitFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) submitFiles(fileInput.files); });
+
+        function submitFiles(files) {
+            const fd = new FormData();
+            fd.append('label_name', lbl);
+            for (const f of files) fd.append('training_media', f);
+
+            if (progDiv) { progDiv.style.display = ''; if(barEl) barEl.style.width='10%'; if(progTxt) progTxt.textContent='Dang tai '+files.length+' file...'; }
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action);
+            xhr.upload.onprogress = e => { if(e.lengthComputable && barEl) barEl.style.width = Math.round(e.loaded/e.total*90)+'%'; };
+            xhr.onload = () => {
+                if(barEl) barEl.style.width = '100%';
+                if(progTxt) progTxt.textContent = 'Da tai xong! Dang cap nhat...';
+                setTimeout(() => { if(progDiv) progDiv.style.display='none'; refreshMediaList(); loadStatus(); }, 900);
+            };
+            xhr.onerror = () => { if(progDiv) progDiv.style.display='none'; alert('Loi khi tai file. Vui long thu lai.'); };
+            xhr.send(fd);
+        }
+    });
+
+    // Right Sidebar / Preview Lane Rendering
+    const thumbsScroll = document.getElementById('sidebarThumbsScroll');
+    const sidebarCount = document.getElementById('sidebarCount');
+    const activeViewer = document.getElementById('sidebarActiveViewer');
+    const viewerImg = document.getElementById('viewerImg');
+    const viewerLabel = document.getElementById('viewerLabel');
+    const viewerName = document.getElementById('viewerName');
+    const viewerDelBtn = document.getElementById('viewerDelBtn');
+    let currentFilter = 'all';
+
+    function renderSidebarGallery(items) {
+        currentMediaList = items || [];
+        if (sidebarCount) sidebarCount.textContent = currentMediaList.length;
+
+        const filtered = currentFilter === 'all'
+            ? currentMediaList
+            : currentMediaList.filter(it => it.label === currentFilter);
+
+        if (!thumbsScroll) return;
+
+        if (!filtered.length) {
+            thumbsScroll.innerHTML = '<div class="empty-gallery-msg">Khong co tep nao cho muc nay.</div>';
+            if (activeViewer) activeViewer.style.display = 'none';
+            return;
+        }
+
+        thumbsScroll.innerHTML = filtered.map(it => {
+            const isImg = it.type === 'image';
+            const url = it.preview_url || (previewBase + it.id);
+            return `<div class="sidebar-thumb-card ${activeMid === it.id ? 'selected' : ''}" data-mid="${it.id}">` +
+                (isImg ? `<img src="${url}" loading="lazy" alt="${it.name}">` : `<div class="video-thumb-icon">VIDEO</div>`) +
+                `<div class="thumb-meta"><span class="thumb-label-badge">${it.label.split('_').pop()}</span><span class="thumb-name-text">${it.name}</span></div>` +
+                `</div>`;
+        }).join('');
+
+        thumbsScroll.querySelectorAll('.sidebar-thumb-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const mid = Number(card.dataset.mid);
+                const item = currentMediaList.find(x => x.id === mid);
+                if (item) showActivePreview(item);
+            });
+        });
+
+        if (filtered.length && (!activeMid || !filtered.some(x => x.id === activeMid))) {
+            showActivePreview(filtered[0]);
+        }
+    }
+
+    function showActivePreview(item) {
+        if (!item || !activeViewer) return;
+        activeMid = item.id;
+        const url = item.preview_url || (previewBase + item.id);
+        viewerImg.src = url;
+        viewerLabel.textContent = item.label;
+        viewerName.textContent = item.name;
+        activeViewer.style.display = '';
+
+        thumbsScroll.querySelectorAll('.sidebar-thumb-card').forEach(c => {
+            c.classList.toggle('selected', Number(c.dataset.mid) === item.id);
+        });
+
+        viewerDelBtn.onclick = () => deleteMedia(item.id);
+    }
+
+    // Filter pills
+    document.querySelectorAll('#mediaFilterPills .filter-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('#mediaFilterPills .filter-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentFilter = pill.dataset.filter;
+            renderSidebarGallery(currentMediaList);
+        });
+    });
+
+    // Media list refresh & delete
+    async function refreshMediaList() {
+        if (!listUrl) return;
+        try {
+            const r = await fetch(listUrl, {cache:'no-store'});
+            if (!r.ok) return;
+            const data = await r.json();
+            const items = data.items || [];
+            renderMediaTable(items);
+            renderSidebarGallery(items);
+
+            const min = data.minimum || 5;
+            for (const [lbl, cnt] of Object.entries(data.counts||{})) {
+                const el = document.getElementById('count-'+lbl);
+                if (el) { el.textContent = cnt+'/'+min+' tep'; el.classList.toggle('label-count-ok', cnt>=min); }
+            }
+            button.disabled = !data.ready || badge.textContent.trim()==='training';
+        } catch(_){}
+    }
+
+    function renderMediaTable(items) {
+        const tbody = document.getElementById('mediaTableBody');
+        if (!tbody) return;
+        if (!items.length) {
+            tbody.innerHTML = '<tr id="mrow-empty"><td colspan="5">Chua co anh/video train cho bai nay.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = items.map(item =>
+            `<tr id="mrow-${item.id}">` +
+            `<td><span class="label-pill">${item.label}</span></td>` +
+            `<td>${item.type}</td><td>${item.name}</td><td>${item.created_at}</td>` +
+            `<td><button class="btn btn-danger btn-small del-media-btn" data-mid="${item.id}">Xoa</button></td></tr>`
+        ).join('');
+        attachDeleteHandlers();
+    }
+
+    function attachDeleteHandlers() {
+        document.querySelectorAll('.del-media-btn').forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => deleteMedia(newBtn.dataset.mid));
+        });
+    }
+
+    async function deleteMedia(mid) {
+        if (!confirm('Xac nhan xoa tep nay khoi dataset?')) return;
+        try {
+            const r = await fetch(deleteBase + mid, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}});
+            if (r.ok) {
+                if (activeMid === Number(mid)) activeMid = null;
+                refreshMediaList();
+                loadStatus();
+            }
+        } catch(_){}
+    }
+
+    attachDeleteHandlers();
+    const refreshBtn = document.getElementById('refreshMediaBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', refreshMediaList);
+    refreshMediaList();
+})();
+</script>
+{% endblock %}

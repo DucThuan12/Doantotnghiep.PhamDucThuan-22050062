@@ -1,0 +1,13 @@
+Flask
+Flask-SQLAlchemy
+Werkzeug
+opencv-python
+ultralytics
+numpy
+torch
+torchvision
+Pillow
+pyttsx3
+gtts
+imageio-ffmpeg
+edge-tts

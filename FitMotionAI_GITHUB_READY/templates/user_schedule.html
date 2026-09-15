@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block body %}
+{% set level_options = level_options|default(['easy', 'medium', 'hard']) %}
+{% if level_options and level_options[0] is string %}{% set level_options = [('easy','Dễ'),('medium','Trung bình'),('hard','Khó')] %}{% endif %}
+<header class="topbar modern-topbar">
+    <div class="brand-wrap">
+        <a class="brand-link" href="{{ url_for('home') }}"><div class="brand-badge small">FitMotion AI</div></a>
+    </div>
+    <nav class="nav-center modern-nav">
+        <a class="nav-link" href="{{ url_for('user_dashboard') }}">Tổng quan</a>
+        <a class="nav-link active" href="{{ url_for('user_schedule') }}">Lịch tập</a>
+        <a class="nav-link" href="{{ url_for('user_programs') }}">Giáo án</a>
+        <a class="nav-link" href="{{ url_for('user_exercises') }}">Động tác</a>
+        <a class="nav-link" href="{{ url_for('user_workout_redirect') }}">Luyện tập</a>
+        <a class="nav-link" href="{{ url_for('user_analytics') }}">Phân tích</a>
+        <a class="nav-link" href="{{ url_for('user_profile') }}">Hồ sơ</a>
+    </nav>
+    <div class="user-menu glass-chip"><span>{{ user.name }}</span><a href="{{ url_for('logout') }}">Đăng xuất</a></div>
+</header>
+
+<main class="dashboard-page schedule-page">
+    <section class="hero-panel schedule-hero">
+        <div class="hero-left">
+            <p class="eyebrow">Lịch cá nhân bền vững</p>
+            <h1>Tự đăng ký ngày tập phù hợp với công việc</h1>
+            <p class="hero-text">
+                Chọn chính xác thứ bạn có thể tập, gán bài tập cho từng ngày và theo dõi lịch theo tuần hoặc theo tháng.
+                Lịch được lưu trong SQLite theo khoảng ngày đã đăng ký, không tự xóa khi sang tuần mới.
+            </p>
+        </div>
+        <div class="hero-right schedule-hero-stats">
+            <div class="hero-mini-card"><div class="mini-label">Lịch đã tạo</div><div class="mini-number">{{ schedules|length }}</div></div>
+            <div class="hero-mini-card"><div class="mini-label">Tháng đang xem</div><div class="mini-number">{{ calendar_data.label }}</div></div>
+        </div>
+    </section>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div class="flash-box">{% for msg in messages %}<p>{{ msg }}</p>{% endfor %}</div>{% endif %}
+    {% endwith %}
+
+    <section class="schedule-layout">
+        <div class="panel schedule-editor-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="panel-tag">{{ 'Điều chỉnh lịch' if edit_schedule else 'Tạo lịch mới' }}</p>
+                    <h2>{{ edit_schedule['name'] if edit_schedule else 'Đăng ký lịch tập theo tuần' }}</h2>
+                </div>
+                {% if edit_schedule %}<a class="btn btn-outline btn-small" href="{{ url_for('user_schedule', month=calendar_data.month_key) }}">Tạo lịch khác</a>{% endif %}
+            </div>
+
+            <form method="post" id="scheduleForm" class="schedule-form">
+                <input type="hidden" name="schedule_id" value="{{ edit_schedule['id'] if edit_schedule else '' }}">
+                <input type="hidden" name="return_month" value="{{ calendar_data.month_key }}">
+                <div class="form-grid schedule-meta-grid">
+                    <label>Tên lịch
+                        <input name="name" maxlength="160" required value="{{ edit_schedule['name'] if edit_schedule else 'Lịch tập cá nhân' }}" placeholder="Ví dụ: Lịch tập sau giờ làm">
+                    </label>
+                    <label>Ngày bắt đầu
+                        <input type="date" id="scheduleStartDate" name="start_date" required min="{{ edit_schedule['start_date'] if edit_schedule else today }}" value="{{ edit_schedule['start_date'] if edit_schedule else today }}">
+                    </label>
+                    <label>Ngày kết thúc
+                        <input type="date" id="scheduleEndDate" name="end_date" required min="{{ edit_schedule['start_date'] if edit_schedule else today }}" value="{{ edit_schedule['end_date'] if edit_schedule else default_end }}">
+                    </label>
+                </div>
+
+                <div class="schedule-guidance">
+                    <strong>Cách nhập:</strong> mỗi dòng là một bài tập lặp lại vào một thứ cố định. Có thể thêm nhiều dòng cùng một thứ nếu muốn tập nhiều bài trong ngày đó.
+                </div>
+
+                <div class="schedule-items-head">
+                    <h3>Các buổi lặp lại hằng tuần</h3>
+                    <button type="button" id="addScheduleRow" class="btn btn-outline btn-small">+ Thêm bài vào tuần</button>
+                </div>
+                <div id="scheduleRows" class="schedule-rows">
+                    {% set rows = edit_schedule['rows'] if edit_schedule else [{'weekday': 0, 'exercise_id': (exercises[0].id if exercises else 0), 'set_count': 1, 'rep_target': 10, 'training_level': 'medium'}] %}
+                    {% for row in rows %}
+                    <div class="schedule-row">
+                        <label>Ngày có thể tập
+                            <select name="weekday[]" required>
+                                {% for label in weekday_labels %}<option value="{{ loop.index0 }}" {% if row['weekday'] == loop.index0 %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <label>Bài tập
+                            <select name="exercise_id[]" required>
+                                {% for exercise in exercises %}<option value="{{ exercise.id }}" {% if row['exercise_id'] == exercise.id %}selected{% endif %}>{{ exercise.name }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <label>Cấp độ
+                            <select name="training_level[]" required>
+                                {% for level_key, level_label in level_options %}<option value="{{ level_key }}" {% if row.get('training_level', 'medium') == level_key %}selected{% endif %}>{{ level_label }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <label>Số hiệp
+                            <input type="number" name="set_count[]" min="1" max="20" value="{{ row['set_count'] }}" required>
+                        </label>
+                        <label>Số lần/hiệp
+                            <input type="number" name="rep_target[]" min="1" max="500" value="{{ row['rep_target'] }}" required>
+                        </label>
+                        <button type="button" class="schedule-remove-row" title="Xóa dòng" aria-label="Xóa dòng">×</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button class="btn btn-primary schedule-save-button" type="submit">{{ 'Lưu thay đổi lịch tập' if edit_schedule else 'Tạo và lưu lịch tập' }}</button>
+            </form>
+        </div>
+
+        <div class="panel schedule-list-panel">
+            <div class="panel-head"><div><p class="panel-tag">Database</p><h2>Các lịch đã đăng ký</h2></div></div>
+            {% if schedules %}
+            <div class="schedule-card-list">
+                {% for schedule in schedules %}
+                <article class="saved-schedule-card {% if schedule['status'] != 'active' %}schedule-archived{% endif %}">
+                    <div class="saved-schedule-head">
+                        <div><h3>{{ schedule['name'] }}</h3><p>{{ schedule['start_date'] }} → {{ schedule['end_date'] }}</p>{% if schedule.get('source_program_title') %}<small class="schedule-program-source">Từ giáo án: {{ schedule['source_program_title'] }}</small>{% endif %}</div>
+                        <span class="schedule-status schedule-status-{{ schedule['status'] }}">{{ 'Đang áp dụng' if schedule['status'] == 'active' else 'Đã ngừng' }}</span>
+                    </div>
+                    {% for weekday in schedule['weekday_groups'] %}
+                    <div class="saved-weekday-row">
+                        <strong>{{ weekday['weekday_label'] }}</strong>
+                        <div>{% for item in weekday['exercises'] %}<span>{{ item['exercise_name'] }} · {{ item.get('training_level_label', 'Trung bình') }} · {{ item['set_count'] }} hiệp × {{ item['rep_target'] }} lần</span>{% endfor %}</div>
+                    </div>
+                    {% endfor %}
+                    <div class="saved-schedule-actions">
+                        <a class="btn btn-outline btn-small" href="{{ url_for('user_schedule', month=calendar_data.month_key, edit=schedule['id']) }}">Chỉnh sửa</a>
+                        {% if schedule['status'] == 'active' %}
+                        <form method="post" action="{{ url_for('user_schedule_delete', schedule_id=schedule['id']) }}" onsubmit="return confirm('Ngừng lịch này? Các tháng đã qua và lịch sử tập sẽ vẫn được giữ.');">
+                            <button class="btn btn-danger btn-small" type="submit">Ngừng lịch</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}<div class="empty-box">Anh chưa đăng ký lịch nào. Hãy tạo lịch đầu tiên ở biểu mẫu bên trái.</div>{% endif %}
+        </div>
+    </section>
+
+    <section class="panel month-calendar-panel">
+        <div class="month-calendar-head">
+            <a class="btn btn-outline btn-small" href="{{ url_for('user_schedule', month=previous_month) }}">← Tháng trước</a>
+            <div><p class="panel-tag">Theo dõi dài hạn</p><h2>{{ calendar_data.label }}</h2></div>
+            <a class="btn btn-outline btn-small" href="{{ url_for('user_schedule', month=next_month) }}">Tháng sau →</a>
+        </div>
+        <div class="calendar-weekdays">{% for label in ['T2','T3','T4','T5','T6','T7','CN'] %}<span>{{ label }}</span>{% endfor %}</div>
+        <div class="month-calendar-grid">
+            {% for week in calendar_data.weeks %}
+                {% for day in week %}
+                    {% if day %}
+                    <div class="calendar-day {% if day.is_today %}calendar-today{% endif %}">
+                        <div class="calendar-day-number">{{ day.day }}</div>
+                        <div class="calendar-events">
+                            {% for event in day.events %}
+                            {% if event.exercise_slug %}<a href="{{ url_for('user_workout', slug=event.exercise_slug) }}" class="calendar-event calendar-event-{{ event.status }}">{% else %}<span class="calendar-event calendar-event-{{ event.status }}">{% endif %}
+                                <strong>{{ event.exercise_name }}</strong>
+                                <small>{{ event.training_level_label|default('Trung bình') }} · {{ event.set_count }}×{{ event.rep_target }} · {{ {'pending':'Đã lên lịch','completed':'Đã tập','partial':'Chưa đủ','missed':'Bỏ lỡ'}.get(event.status, event.status) }}</small>
+                            {% if event.exercise_slug %}</a>{% else %}</span>{% endif %}
+                            {% else %}<span class="calendar-empty-day">—</span>{% endfor %}
+                        </div>
+                    </div>
+                    {% else %}<div class="calendar-day calendar-day-outside"></div>{% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+        <div class="calendar-legend">
+            <span><i class="legend-dot legend-pending"></i>Đã lên lịch</span>
+            <span><i class="legend-dot legend-completed"></i>Đã tập</span>
+            <span><i class="legend-dot legend-partial"></i>Chưa đủ mục tiêu</span>
+            <span><i class="legend-dot legend-missed"></i>Bỏ lỡ</span>
+        </div>
+    </section>
+</main>
+
+<template id="scheduleRowTemplate">
+    <div class="schedule-row">
+        <label>Ngày có thể tập
+            <select name="weekday[]" required>{% for label in weekday_labels %}<option value="{{ loop.index0 }}">{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label>Bài tập
+            <select name="exercise_id[]" required>{% for exercise in exercises %}<option value="{{ exercise.id }}">{{ exercise.name }}</option>{% endfor %}</select>
+        </label>
+        <label>Cấp độ
+            <select name="training_level[]" required>{% for level_key, level_label in level_options %}<option value="{{ level_key }}" {% if level_key == 'medium' %}selected{% endif %}>{{ level_label }}</option>{% endfor %}</select>
+        </label>
+        <label>Số hiệp<input type="number" name="set_count[]" min="1" max="20" value="1" required></label>
+        <label>Số lần/hiệp<input type="number" name="rep_target[]" min="1" max="500" value="10" required></label>
+        <button type="button" class="schedule-remove-row" title="Xóa dòng" aria-label="Xóa dòng">×</button>
+    </div>
+</template>
+<script>
+(() => {
+    const rows = document.getElementById('scheduleRows');
+    const template = document.getElementById('scheduleRowTemplate');
+    const addButton = document.getElementById('addScheduleRow');
+    const levelDefaults = {{ level_defaults|default({})|tojson }};
+    if (!rows || !template || !addButton) return;
+
+    const applyLevelDefaults = (row) => {
+        const exerciseInput = row?.querySelector('select[name="exercise_id[]"]');
+        const levelInput = row?.querySelector('select[name="training_level[]"]');
+        const setInput = row?.querySelector('input[name="set_count[]"]');
+        const repInput = row?.querySelector('input[name="rep_target[]"]');
+        if (!exerciseInput || !levelInput || !setInput || !repInput) return;
+        const defaults = levelDefaults[String(exerciseInput.value)]?.[String(levelInput.value)];
+        if (!defaults) return;
+        setInput.value = Number(defaults.set_count || 1);
+        repInput.value = Number(defaults.rep_target || 1);
+    };
+
+    const bindLevelDefaults = (row, applyInitially = false) => {
+        const exerciseInput = row?.querySelector('select[name="exercise_id[]"]');
+        const levelInput = row?.querySelector('select[name="training_level[]"]');
+        exerciseInput?.addEventListener('change', () => applyLevelDefaults(row));
+        levelInput?.addEventListener('change', () => applyLevelDefaults(row));
+        if (applyInitially) applyLevelDefaults(row);
+    };
+
+    const bindRemove = (button) => button.addEventListener('click', () => {
+        if (rows.querySelectorAll('.schedule-row').length <= 1) {
+            window.alert('Lịch phải có ít nhất một bài tập.');
+            return;
+        }
+        button.closest('.schedule-row')?.remove();
+    });
+    rows.querySelectorAll('.schedule-remove-row').forEach(bindRemove);
+    rows.querySelectorAll('.schedule-row').forEach((row) => bindLevelDefaults(row, false));
+    const startDate = document.getElementById('scheduleStartDate');
+    const endDate = document.getElementById('scheduleEndDate');
+    const syncDateRange = () => {
+        if (!startDate || !endDate) return;
+        endDate.min = startDate.value;
+        if (endDate.value && endDate.value < startDate.value) endDate.value = startDate.value;
+    };
+    startDate?.addEventListener('change', syncDateRange);
+    syncDateRange();
+
+    addButton.addEventListener('click', () => {
+        if (rows.querySelectorAll('.schedule-row').length >= 28) {
+            window.alert('Tối đa 28 dòng bài tập trong một lịch tuần.');
+            return;
+        }
+        const fragment = template.content.cloneNode(true);
+        const newRow = fragment.querySelector('.schedule-row');
+        const button = fragment.querySelector('.schedule-remove-row');
+        if (button) bindRemove(button);
+        if (newRow) bindLevelDefaults(newRow, true);
+        rows.appendChild(fragment);
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <div class="sidebar-top"><a class="brand-link" href="{{ url_for('home') }}"><div class="brand-badge small">FitMotion AI</div></a><p class="sidebar-sub">Quản trị hệ thống</p></div>
+        <nav class="sidebar-menu">
+            <a class="menu-item" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a class="menu-item" href="{{ url_for('admin_users') }}">Quản lý người dùng</a>
+            <a class="menu-item active" href="{{ url_for('admin_emergency_alerts') }}">Cảnh báo khẩn cấp</a>
+            <a class="menu-item" href="{{ url_for('admin_exercises') }}">Quản lý bài tập</a>
+            <a class="menu-item" href="{{ url_for('admin_programs') }}">Quản lý giáo án</a>
+        </nav>
+    </aside>
+    <section class="admin-content">
+        <header class="admin-topbar">
+            <div><p class="panel-tag">An toàn người tập</p><h1>Cảnh báo khẩn cấp</h1><p>{{ unread_count }} thông báo chưa đọc</p></div>
+            <div class="admin-topbar-actions">{% include '_admin_notification_bell.html' %}<div class="user-menu glass-chip"><span>{{ user.name }}</span><a href="{{ url_for('logout') }}">Đăng xuất</a></div></div>
+        </header>
+        <section class="panel">
+            <div class="panel-head"><div><p class="panel-tag">Audit trail</p><h2>Sự kiện phát hiện ngã/ngất</h2></div></div>
+            <div class="task-list">
+                {% for alert in alerts %}
+                <article id="alert-{{ alert.id }}" class="task-item emergency-alert-card {% if alert.status != 'unread' %}is-read{% endif %}">
+                    <div class="criterion-head">
+                        <strong>{{ alert.user_name_snapshot or 'Người dùng' }} · {{ alert.exercise_slug }}</strong>
+                        <span>{{ alert.triggered_at.strftime('%d/%m/%Y %H:%M:%S') if alert.triggered_at else '' }} · {{ alert.status }}</span>
+                    </div>
+                    <p><strong>Lý do:</strong> {{ alert.reason }}</p>
+                    <p>{{ alert.message }}</p>
+
+                    <div class="emergency-evidence-layout">
+                        <div class="emergency-evidence-frame">
+                            {% if alert.evidence_path %}
+                            <img src="{{ url_for('admin_emergency_evidence', alert_id=alert.id) }}" alt="Ảnh chụp thời điểm phát hiện ngã/ngất của {{ alert.user_name_snapshot or 'người tập' }}" loading="lazy">
+                            {% else %}
+                            <div class="emergency-image-missing">Không có ảnh bằng chứng cho sự kiện này.</div>
+                            {% endif %}
+                        </div>
+                        <div class="emergency-contact-details">
+                            <h3>Thông tin tài khoản cần liên hệ</h3>
+                            <dl>
+                                <div><dt>Họ tên</dt><dd>{{ alert.user_name_snapshot or 'Chưa cập nhật' }}</dd></div>
+                                <div><dt>Gmail / Email đăng ký</dt><dd>{{ alert.user_email_snapshot or 'Chưa cập nhật' }}</dd></div>
+                                <div><dt>SĐT tài khoản</dt><dd>{% if alert.personal_phone_snapshot %}<a href="tel:{{ alert.personal_phone_snapshot }}">{{ alert.personal_phone_snapshot }}</a>{% else %}Chưa cập nhật{% endif %}</dd></div>
+                                <div><dt>Người thân</dt><dd>{{ alert.emergency_contact_name_snapshot or 'Chưa cập nhật' }}{% if alert.emergency_relation_snapshot %} · {{ alert.emergency_relation_snapshot }}{% endif %}</dd></div>
+                                <div><dt>SĐT người thân</dt><dd>{% if alert.emergency_phone_snapshot %}<a href="tel:{{ alert.emergency_phone_snapshot }}">{{ alert.emergency_phone_snapshot }}</a>{% else %}Chưa cập nhật{% endif %}</dd></div>
+                                <div><dt>Địa chỉ liên hệ</dt><dd>{{ alert.address_snapshot or 'Chưa cập nhật' }}</dd></div>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-actions">
+                        {% if alert.status == 'unread' %}<button class="btn btn-outline js-alert-read" data-id="{{ alert.id }}">Đánh dấu đã đọc</button>{% endif %}
+                        {% if alert.status != 'resolved' %}<button class="btn btn-primary js-alert-resolve" data-id="{{ alert.id }}">Đã liên hệ / xử lý</button>{% endif %}
+                    </div>
+                </article>
+                {% else %}<div class="task-item"><strong>Chưa có cảnh báo.</strong><span>Khi một sự kiện ngã/ngất được xác nhận, bản ghi sẽ xuất hiện tại đây.</span></div>{% endfor %}
+            </div>
+        </section>
+    </section>
+</div>
+<script>
+async function postAlertAction(id, action){
+    const url = action === 'resolve'
+        ? {{ url_for('admin_resolve_emergency_alert', alert_id=0)|tojson }}.replace('/0/', `/${id}/`)
+        : {{ url_for('admin_mark_emergency_read', alert_id=0)|tojson }}.replace('/0/', `/${id}/`);
+    const res = await fetch(url, {method:'POST', headers:{'Accept':'application/json'}});
+    if(res.ok) location.reload();
+}
+document.querySelectorAll('.js-alert-read').forEach(btn => btn.addEventListener('click', () => postAlertAction(btn.dataset.id,'read')));
+document.querySelectorAll('.js-alert-resolve').forEach(btn => btn.addEventListener('click', () => postAlertAction(btn.dataset.id,'resolve')));
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+FITMOTION AI - DANH SACH THAY DOI TRUC TIEP
+
+Added: 35
+  + CHANGELOG_TUAN6.md
+  + CHECK_TUAN6_WINDOWS.bat
+  + INSTALL_TUAN6_WINDOWS.bat
+  + README_TUAN6.md
+  + START_TUAN6_WINDOWS.bat
+  + ai_temporal.py
+  + data/validation/week6/README.md
+  + data/validation/week6/annotation_template.csv
+  + data/validation/week6/manifest.csv
+  + data/validation/week6/real_video_protocol.csv
+  + data/validation/week6/scenarios.json
+  + docs/BAO_CAO_KY_THUAT_TUAN6.md
+  + docs/KET_QUA_KIEM_THU_TUAN6.md
+  + docs/PREFLIGHT_NO_DEPS_PASS.txt
+  + docs/STATIC_VALIDATION_PASS.txt
+  + docs/TEST_RESULTS_40_PASS.txt
+  + docs/WEEK6_IMPLEMENTATION_AUDIT.md
+  + docs/preflight_output_week6.txt
+  + docs/static_validation_week6.txt
+  + docs/test_output_week6.txt
+  + evaluation_metrics.py
+  + expert_system.py
+  + instance/README.md
+  + pose_model.py
+  + quality_scoring.py
+  + scripts/evaluate_week6.py
+  + scripts/preflight_week6.py
+  + scripts/static_validate_week6.py
+  + standalone_runner.py
+  + tests/test_week6_architecture.py
+  + tests/test_week6_evaluation.py
+  + tests/test_week6_expert_system.py
+  + tests/test_week6_integrity.py
+  + tests/test_week6_processors.py
+  + tests/test_week6_temporal_scoring.py
+
+Modified: 14
+  * aifitness.db
+  * app.py
+  * curl.py
+  * main.py
+  * models.py
+  * pushup.py
+  * requirements.txt
+  * squat.py
+  * templates/user_analytics.html
+  * templates/user_dashboard.html
+  * templates/user_workout.html
+  * video_processor.py
+  * webapp.py
+  * workoutlogic.py
+
+Removed: 1
+  - instance/aifitness.db

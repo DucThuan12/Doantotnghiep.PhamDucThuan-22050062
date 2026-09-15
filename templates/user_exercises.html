@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="topbar modern-topbar">
+    <div class="brand-wrap">
+        <a class="brand-link" href="{{ url_for('home') }}"><div class="brand-badge small">FitMotion AI</div></a>
+    </div>
+    <nav class="nav-center modern-nav">
+        <a class="nav-link" href="{{ url_for('user_dashboard') }}">Tổng quan</a>
+        <a class="nav-link" href="{{ url_for('user_schedule') }}">Lịch tập</a>
+        <a class="nav-link" href="{{ url_for('user_programs') }}">Giáo án</a>
+        <a class="nav-link active" href="{{ url_for('user_exercises') }}">Động tác</a>
+        <a class="nav-link" href="{{ url_for('user_workout_redirect') }}">Luyện tập</a>
+        <a class="nav-link" href="{{ url_for('user_analytics') }}">Phân tích</a>
+        <a class="nav-link" href="{{ url_for('user_profile') }}">Hồ sơ</a>
+    </nav>
+    <div class="user-menu glass-chip"><span>{{ user.name }}</span><a href="{{ url_for('logout') }}">Đăng xuất</a></div>
+</header>
+
+<main class="dashboard-page">
+    <section class="hero-panel">
+        <div class="hero-left">
+            <p class="eyebrow">Thư viện động tác</p>
+            <h1>Chọn bài tập và cấp độ</h1>
+            <p class="hero-text">Mỗi bài có 3 cấp độ thật. Chọn Dễ, Trung bình hoặc Khó trước khi vào khu vực luyện tập.</p>
+        </div>
+    </section>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div class="flash-box">{% for msg in messages %}<p>{{ msg }}</p>{% endfor %}</div>{% endif %}
+    {% endwith %}
+
+    <section class="panel">
+        <form method="GET" class="inline-form">
+            <input type="text" name="q" value="{{ keyword }}" placeholder="Tìm theo tên bài tập, nhóm cơ, mô tả...">
+            <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+        </form>
+    </section>
+
+    <section class="exercise-grid">
+        {% for ex in exercises %}
+        <div class="exercise-card exercise-level-card" data-exercise-card data-workout-base="{{ url_for('user_workout', slug=ex.slug) }}">
+            <div class="exercise-head">
+                <h3>{{ ex.name }}</h3>
+                <span class="difficulty-pill">{{ ex.difficulty }}</span>
+            </div>
+            <p class="exercise-desc">{{ ex.description }}</p>
+            <div class="exercise-meta">
+                <div><strong>Nhóm cơ:</strong> {{ ex.muscle_group }}</div>
+                <div><strong>Độ tuổi:</strong> {{ ex.age_min }} - {{ ex.age_max }}</div>
+                <div><strong>Calo/rep:</strong> {{ ex.calories }}</div>
+            </div>
+
+            <div class="exercise-level-picker" role="group" aria-label="Chọn cấp độ cho {{ ex.name }}">
+                {% for level_key, level_label in level_options %}
+                {% set target_info = exercise_level_targets.get(ex.id, {}).get(level_key, {}) %}
+                <div class="level-btn-wrapper">
+                    <button
+                        type="button"
+                        class="level-mini-btn"
+                        data-level="{{ level_key }}"
+                        data-level-target="{{ target_info.tooltip or '' }}"
+                        data-level-sets="{{ target_info.set_count or 1 }}"
+                        data-level-reps="{{ target_info.rep_target or 10 }}"
+                        data-level-time="{{ target_info.time_text or '2p' }}"
+                    >
+                        {{ level_label }}
+                    </button>
+                    <div class="level-hover-tooltip" role="tooltip" aria-hidden="true">
+                        <div class="tooltip-badge">Mức {{ level_label }}</div>
+                        <div class="tooltip-row">Mục tiêu: <strong>{{ target_info.set_count or 1 }} hiệp × {{ target_info.rep_target or 10 }} rep ({{ target_info.formula or '1x10' }})</strong></div>
+                        <div class="tooltip-row">Thời gian: <strong>{{ target_info.full_time_text or '2 phút' }}</strong></div>
+                        <div class="tooltip-hint">Không đạt trong thời gian sẽ tự động reset</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="exercise-actions level-required-actions">
+                <span class="level-choice-hint" data-level-hint>Chọn cấp độ để bắt đầu</span>
+                <a class="btn btn-primary workout-start-disabled" data-workout-link aria-disabled="true" tabindex="-1">Luyện tập</a>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+</main>
+<style>
+.exercise-level-picker {
+    display: flex;
+    gap: 8px;
+    margin: 14px 0 10px;
+}
+.level-btn-wrapper {
+    position: relative;
+    display: inline-block;
+    flex: 1;
+}
+.level-btn-wrapper .level-mini-btn {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+.level-hover-tooltip {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: #0f172a;
+    border: 1px solid #3b82f6;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 0 12px rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-width: 200px;
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: #e2e8f0;
+    text-align: left;
+}
+.level-hover-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: #3b82f6 transparent transparent transparent;
+}
+.level-btn-wrapper:hover .level-hover-tooltip,
+.level-btn-wrapper:focus-within .level-hover-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+.tooltip-badge {
+    font-weight: 700;
+    color: #60a5fa;
+    margin-bottom: 3px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 3px;
+}
+.tooltip-row {
+    margin: 2px 0;
+    color: #f1f5f9;
+}
+.tooltip-hint {
+    margin-top: 4px;
+    font-size: 10.5px;
+    color: #94a3b8;
+    font-style: italic;
+}
+</style>
+<script>
+(() => {
+    document.querySelectorAll('[data-exercise-card]').forEach((card) => {
+        const base = card.dataset.workoutBase;
+        const link = card.querySelector('[data-workout-link]');
+        const hint = card.querySelector('[data-level-hint]');
+        const labels = {easy: 'Dễ', medium: 'Trung bình', hard: 'Khó'};
+        card.querySelectorAll('.level-mini-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+                card.querySelectorAll('.level-mini-btn').forEach((item) => item.classList.remove('active'));
+                button.classList.add('active');
+                const level = button.dataset.level;
+                link.href = `${base}?level=${encodeURIComponent(level)}`;
+                link.classList.remove('workout-start-disabled');
+                link.removeAttribute('aria-disabled');
+                link.removeAttribute('tabindex');
+                const targetText = button.dataset.levelTarget || '';
+                hint.textContent = `Đã chọn: ${labels[level] || level}`;
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}

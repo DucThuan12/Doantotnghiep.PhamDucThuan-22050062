@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="topbar modern-topbar">
+    <div class="brand-wrap">
+        <a class="brand-link" href="{{ url_for('home') }}">
+            <div class="brand-badge small">FitMotion AI</div>
+        </a>
+    </div>
+
+    <nav class="nav-center modern-nav">
+        <a class="nav-link" href="{{ url_for('home') }}">Trang chủ</a>
+        <a class="nav-link" href="{{ url_for('login') }}">Đăng nhập</a>
+        <a class="nav-link active" href="{{ url_for('register') }}">Đăng ký</a>
+    </nav>
+
+    <div class="glass-chip">
+        <span>Nền tảng luyện tập thông minh</span>
+    </div>
+</header>
+
+<div class="auth-shell with-topbar">
+    <div class="auth-side">
+        <div class="brand-badge">FitMotion AI</div>
+        <h1>Tạo tài khoản mới</h1>
+        <p>
+            Khởi tạo hồ sơ luyện tập để theo dõi tiến độ, lỗi kỹ thuật
+            và kế hoạch tập luyện cá nhân hóa.
+        </p>
+    </div>
+
+    <div class="auth-panel">
+        <div class="auth-card modern-card">
+            <div class="auth-head">
+                <h2>Đăng ký</h2>
+                <p>Điền thông tin để bắt đầu</p>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="flash-box">
+                  {% for msg in messages %}
+                    <p>{{ msg }}</p>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="auth-form">
+                <label>Họ và tên</label>
+                <input type="text" name="fullname" placeholder="Nhập họ và tên" required>
+
+                <label>Email</label>
+                <input type="email" name="email" placeholder="Nhập email" required>
+
+                <label>Số điện thoại cá nhân</label>
+                <input type="tel" name="phone" placeholder="Ví dụ: 0901234567" required>
+
+                <label>Địa chỉ liên hệ</label>
+                <input type="text" name="contact_address" placeholder="Địa chỉ có thể liên hệ khi khẩn cấp" required>
+
+                <label>Người liên hệ khẩn cấp</label>
+                <input type="text" name="emergency_contact_name" placeholder="Họ tên bố/mẹ/bạn/đồng nghiệp..." required>
+
+                <label>Mối quan hệ</label>
+                <input type="text" name="emergency_contact_relation" placeholder="Bố, mẹ, bạn, đồng nghiệp..." required>
+
+                <label>SĐT người liên hệ khẩn cấp</label>
+                <input type="tel" name="emergency_contact_phone" placeholder="Ví dụ: 0912345678" required>
+
+                <label>Mật khẩu</label>
+                <input type="password" name="password" placeholder="Nhập mật khẩu" required>
+
+                <button type="submit" class="btn btn-primary btn-full">Đăng ký</button>
+            </form>
+
+            <div class="auth-links single-link">
+                <a href="{{ url_for('login') }}">Đã có tài khoản? Đăng nhập</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

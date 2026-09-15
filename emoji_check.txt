@@ -1,0 +1,6 @@
+﻿templates/user_programs.html:44: [HAS EMOJI]
+templates/user_programs.html:192: [HAS EMOJI]
+templates/user_programs.html:203: [HAS EMOJI]
+templates/user_workout.html:165: [HAS EMOJI]
+templates/user_exercises.html:70: [HAS EMOJI]
+templates/user_exercises.html:71: [HAS EMOJI]

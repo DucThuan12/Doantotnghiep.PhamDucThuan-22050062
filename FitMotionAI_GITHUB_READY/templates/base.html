@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title if title else "FitMotion AI" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    {% block body %}{% endblock %}
+    <footer class="site-footer" id="siteFooter">
+        <div class="footer-inner">
+            <div class="footer-col footer-brand-col">
+                <div class="footer-logo">FitMotion AI</div>
+                <p class="footer-tagline">Hệ thống mô phỏng bài tập thể chất ứng dụng AI nhận diện tư thế và chia sẻ giáo án luyện tập.</p>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-heading">Thông tin liên hệ</h4>
+                <ul class="footer-list">
+                    <li>Bến Tượng, Lai Hưng, phường Bến Cát, Thành phố Hồ Chí Minh</li>
+                    <li><a href="mailto:22050062@student.bdu.edu.vn">22050062@student.bdu.edu.vn</a></li>
+                    <li><a href="mailto:admin@aifitness.local">admin@aifitness.local</a></li>
+                    <li>SĐT: 0379368122</li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-heading">Mạng xã hội</h4>
+                <div class="footer-social">
+                    <a href="https://www.facebook.com/dthuan312/" target="_blank" rel="noopener noreferrer" class="footer-social-btn">Facebook</a>
+                    <a href="http://www.youtube.com/@sw-vs5vd" target="_blank" rel="noopener noreferrer" class="footer-social-btn">YouTube</a>
+                    <a href="https://chat.zalo.me/" target="_blank" rel="noopener noreferrer" class="footer-social-btn">Zalo</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>FitMotion AI &copy; 2026 &mdash; Phạm Đức Thuận &mdash; 22050062</span>
+        </div>
+    </footer>
+    <style>
+    .site-footer {
+        background: #0f172a;
+        border-top: 1px solid rgba(148,163,184,0.12);
+        padding: 40px 0 0;
+        margin-top: 48px;
+        color: #94a3b8;
+        font-size: 14px;
+    }
+    .admin-shell ~ #siteFooter,
+    .admin-shell + #siteFooter { display: none; }
+    .footer-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px;
+        display: grid;
+        grid-template-columns: 2fr 1.5fr 1fr;
+        gap: 40px;
+    }
+    .footer-logo {
+        font-size: 22px;
+        font-weight: 800;
+        color: #f8fafc;
+        letter-spacing: -0.5px;
+        margin-bottom: 10px;
+    }
+    .footer-tagline { line-height: 1.6; color: #64748b; font-size: 13px; }
+    .footer-heading { font-size: 13px; font-weight: 700; color: #f1f5f9; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; }
+    .footer-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
+    .footer-list a { color: #94a3b8; text-decoration: none; }
+    .footer-list a:hover { color: #f8fafc; }
+    .footer-social { display: flex; flex-direction: column; gap: 10px; }
+    .footer-social-btn {
+        display: inline-block;
+        padding: 7px 16px;
+        border: 1px solid rgba(148,163,184,0.25);
+        border-radius: 6px;
+        color: #cbd5e1;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .footer-social-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(148,163,184,0.5); color: #f8fafc; }
+    .footer-bottom {
+        margin-top: 32px;
+        border-top: 1px solid rgba(148,163,184,0.08);
+        padding: 16px 24px;
+        text-align: center;
+        font-size: 12px;
+        color: #475569;
+    }
+    @media (max-width: 768px) {
+        .footer-inner { grid-template-columns: 1fr; gap: 28px; }
+    }
+    </style>
+    <script>
+    (function() {
+        var adminShell = document.querySelector('.admin-shell');
+        var footer = document.getElementById('siteFooter');
+        if (adminShell && footer) footer.style.display = 'none';
+    })();
+    </script>
+</body>
+</html>

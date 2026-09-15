@@ -1,0 +1,84 @@
+<div class="admin-notification-wrap" id="adminNotificationWrap">
+    <button class="admin-bell-btn" id="adminBellBtn" type="button" aria-label="Thông báo khẩn cấp">
+        <span class="admin-bell-icon">🔔</span>
+        <span class="admin-bell-count" id="adminBellCount" hidden>0</span>
+    </button>
+    <div class="admin-notification-panel" id="adminNotificationPanel" hidden>
+        <div class="admin-notification-head">
+            <strong>Cảnh báo khẩn cấp</strong>
+            <a href="{{ url_for('admin_emergency_alerts') }}">Xem tất cả</a>
+        </div>
+        <div id="adminNotificationList" class="admin-notification-list">
+            <div class="admin-notification-empty">Đang tải thông báo...</div>
+        </div>
+    </div>
+</div>
+<div class="admin-emergency-toast" id="adminEmergencyToast" hidden>
+    <strong>⚠ Cảnh báo người tập</strong>
+    <span id="adminEmergencyToastText"></span>
+    <a href="{{ url_for('admin_emergency_alerts') }}">Mở chi tiết</a>
+</div>
+<script>
+(() => {
+    const bell = document.getElementById('adminBellBtn');
+    const count = document.getElementById('adminBellCount');
+    const panel = document.getElementById('adminNotificationPanel');
+    const list = document.getElementById('adminNotificationList');
+    const toast = document.getElementById('adminEmergencyToast');
+    const toastText = document.getElementById('adminEmergencyToastText');
+    if (!bell || !count || !panel || !list) return;
+    const apiUrl = {{ url_for('admin_emergency_notifications_api')|tojson }};
+    const detailBase = {{ url_for('admin_emergency_alerts')|tojson }};
+    let latestSeenId = Number(sessionStorage.getItem('fitmotionAdminAlertSeen') || 0);
+    let pollingEnabled = true;
+
+    const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    function render(data) {
+        const unread = Number(data.unread_count || 0);
+        count.textContent = unread > 99 ? '99+' : String(unread);
+        count.hidden = unread <= 0;
+        const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+        if (!alerts.length) {
+            list.innerHTML = '<div class="admin-notification-empty">Chưa có cảnh báo khẩn cấp.</div>';
+            return;
+        }
+        list.innerHTML = alerts.slice(0, 8).map(item => `
+            <a class="admin-notification-item ${item.status === 'unread' ? 'is-unread' : ''}" href="${detailBase}#alert-${item.id}">
+                <strong>${esc(item.user_name || 'Người dùng')}</strong>
+                <span>${esc(item.exercise_slug)} · ${esc(item.reason || 'Cần kiểm tra ngay')}</span>
+                <small>${esc(item.triggered_at)}</small>
+            </a>`).join('');
+
+        const newest = alerts[0];
+        if (newest && newest.status === 'unread' && Number(newest.id) > latestSeenId) {
+            latestSeenId = Number(newest.id);
+            sessionStorage.setItem('fitmotionAdminAlertSeen', String(latestSeenId));
+            if (toast && toastText) {
+                toastText.textContent = `${newest.user_name || 'Người dùng'} · ${newest.exercise_slug || ''} · ${newest.reason || 'Cần kiểm tra ngay'}`;
+                toast.hidden = false;
+                requestAnimationFrame(() => toast.classList.add('show'));
+                setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.hidden = true, 260); }, 9000);
+            }
+        }
+    }
+    async function poll() {
+        if (!pollingEnabled) return;
+        try {
+            const res = await fetch(apiUrl, {headers: {'Accept': 'application/json'}, cache: 'no-store'});
+            if (res.status === 401 || res.status === 403) {
+                pollingEnabled = false;
+                count.hidden = true;
+                panel.hidden = true;
+                return;
+            }
+            if (res.ok) render(await res.json());
+        } catch (_) {}
+    }
+    bell.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden) poll(); });
+    document.addEventListener('click', (event) => {
+        if (!document.getElementById('adminNotificationWrap')?.contains(event.target)) panel.hidden = true;
+    });
+    poll();
+    setInterval(poll, 2500);
+})();
+</script>

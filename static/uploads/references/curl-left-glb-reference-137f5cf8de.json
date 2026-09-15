@@ -1,0 +1,224 @@
+{
+  "schema": "fitmotion.reference.v1",
+  "exercise": "curl-left",
+  "animation_key": "curl-left",
+  "version": "mixamo-glb-v1",
+  "source": {
+    "type": "mixamo-blender",
+    "asset": "remycurlleft-694a650d4e.glb",
+    "action": "curl-left",
+    "generator": "Khronos glTF Blender I/O v5.2.39",
+    "reference_method": "direct-glb-skeleton-sampling"
+  },
+  "metrics": [
+    "elbow_angle",
+    "elbow_shift"
+  ],
+  "metric_scales": {
+    "elbow_angle": 139.9662,
+    "elbow_shift": 87.093
+  },
+  "min_score": 55.0,
+  "frames": [
+    {
+      "t": 0.0,
+      "elbow_angle": 178.2523,
+      "elbow_shift": 17.1234
+    },
+    {
+      "t": 0.025641,
+      "elbow_angle": 178.2353,
+      "elbow_shift": 10.6163
+    },
+    {
+      "t": 0.051282,
+      "elbow_angle": 176.6711,
+      "elbow_shift": 4.1238
+    },
+    {
+      "t": 0.076923,
+      "elbow_angle": 176.9853,
+      "elbow_shift": 0.0269
+    },
+    {
+      "t": 0.102564,
+      "elbow_angle": 176.9853,
+      "elbow_shift": 0.0
+    },
+    {
+      "t": 0.128205,
+      "elbow_angle": 172.0796,
+      "elbow_shift": 6.1673
+    },
+    {
+      "t": 0.153846,
+      "elbow_angle": 168.4725,
+      "elbow_shift": 11.2717
+    },
+    {
+      "t": 0.179487,
+      "elbow_angle": 168.3499,
+      "elbow_shift": 12.9262
+    },
+    {
+      "t": 0.205128,
+      "elbow_angle": 167.9432,
+      "elbow_shift": 14.7597
+    },
+    {
+      "t": 0.230769,
+      "elbow_angle": 167.501,
+      "elbow_shift": 16.2837
+    },
+    {
+      "t": 0.25641,
+      "elbow_angle": 167.399,
+      "elbow_shift": 16.9037
+    },
+    {
+      "t": 0.282051,
+      "elbow_angle": 167.5096,
+      "elbow_shift": 16.712
+    },
+    {
+      "t": 0.307692,
+      "elbow_angle": 167.7395,
+      "elbow_shift": 17.1818
+    },
+    {
+      "t": 0.333333,
+      "elbow_angle": 168.0272,
+      "elbow_shift": 18.4451
+    },
+    {
+      "t": 0.358974,
+      "elbow_angle": 168.4459,
+      "elbow_shift": 18.8373
+    },
+    {
+      "t": 0.384615,
+      "elbow_angle": 169.1162,
+      "elbow_shift": 18.1092
+    },
+    {
+      "t": 0.410256,
+      "elbow_angle": 169.338,
+      "elbow_shift": 17.5027
+    },
+    {
+      "t": 0.435897,
+      "elbow_angle": 169.9655,
+      "elbow_shift": 14.2427
+    },
+    {
+      "t": 0.461538,
+      "elbow_angle": 169.7476,
+      "elbow_shift": 10.6926
+    },
+    {
+      "t": 0.487179,
+      "elbow_angle": 168.6317,
+      "elbow_shift": 10.1663
+    },
+    {
+      "t": 0.512821,
+      "elbow_angle": 168.2371,
+      "elbow_shift": 9.4559
+    },
+    {
+      "t": 0.538462,
+      "elbow_angle": 168.6564,
+      "elbow_shift": 7.1036
+    },
+    {
+      "t": 0.564103,
+      "elbow_angle": 170.5391,
+      "elbow_shift": 6.3785
+    },
+    {
+      "t": 0.589744,
+      "elbow_angle": 171.0901,
+      "elbow_shift": 15.4752
+    },
+    {
+      "t": 0.615385,
+      "elbow_angle": 167.4109,
+      "elbow_shift": 27.311
+    },
+    {
+      "t": 0.641026,
+      "elbow_angle": 153.6789,
+      "elbow_shift": 38.0478
+    },
+    {
+      "t": 0.666667,
+      "elbow_angle": 133.3564,
+      "elbow_shift": 51.1388
+    },
+    {
+      "t": 0.692308,
+      "elbow_angle": 113.0205,
+      "elbow_shift": 66.9826
+    },
+    {
+      "t": 0.717949,
+      "elbow_angle": 86.5566,
+      "elbow_shift": 76.7643
+    },
+    {
+      "t": 0.74359,
+      "elbow_angle": 57.739,
+      "elbow_shift": 82.0473
+    },
+    {
+      "t": 0.769231,
+      "elbow_angle": 38.2861,
+      "elbow_shift": 87.093
+    },
+    {
+      "t": 0.794872,
+      "elbow_angle": 42.4486,
+      "elbow_shift": 77.3832
+    },
+    {
+      "t": 0.820513,
+      "elbow_angle": 70.3641,
+      "elbow_shift": 68.7849
+    },
+    {
+      "t": 0.846154,
+      "elbow_angle": 102.4469,
+      "elbow_shift": 65.1465
+    },
+    {
+      "t": 0.871795,
+      "elbow_angle": 126.8085,
+      "elbow_shift": 60.8087
+    },
+    {
+      "t": 0.897436,
+      "elbow_angle": 139.48,
+      "elbow_shift": 53.1812
+    },
+    {
+      "t": 0.923077,
+      "elbow_angle": 149.6658,
+      "elbow_shift": 45.5345
+    },
+    {
+      "t": 0.948718,
+      "elbow_angle": 162.8684,
+      "elbow_shift": 41.3673
+    },
+    {
+      "t": 0.974359,
+      "elbow_angle": 171.1729,
+      "elbow_shift": 33.6739
+    },
+    {
+      "t": 1.0,
+      "elbow_angle": 175.3744,
+      "elbow_shift": 24.3381
+    }
+  ]
+}

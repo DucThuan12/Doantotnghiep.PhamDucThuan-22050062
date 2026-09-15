@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+{% block body %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<header class="topbar modern-topbar">
+    <div class="brand-wrap">
+        <a class="brand-link" href="{{ url_for('home') }}">
+            <div class="brand-badge small">FitMotion AI</div>
+        </a>
+    </div>
+
+    <nav class="nav-center modern-nav">
+        <a class="nav-link" href="{{ url_for('user_dashboard') }}">Tổng quan</a>
+        <a class="nav-link" href="{{ url_for('user_schedule') }}">Lịch tập</a>
+        <a class="nav-link" href="{{ url_for('user_programs') }}">Giáo án</a>
+        <a class="nav-link" href="{{ url_for('user_exercises') }}">Động tác</a>
+        <a class="nav-link" href="{{ url_for('user_workout_redirect') }}">Luyện tập</a>
+        <a class="nav-link active" href="{{ url_for('user_analytics') }}">Phân tích</a>
+        <a class="nav-link" href="{{ url_for('user_profile') }}">Hồ sơ</a>
+    </nav>
+
+    <div class="user-menu glass-chip">
+        <span>{{ user.fullname if user.fullname is defined else user.name }}</span>
+        <a href="{{ url_for('logout') }}">Đăng xuất</a>
+    </div>
+</header>
+
+<main class="dashboard-page">
+    <!-- Header Hero Banner -->
+    <section class="hero-panel">
+        <div class="hero-left">
+            <p class="eyebrow">Trung tâm Phân tích Thể thao AI</p>
+            <h1>Sơ đồ & Chỉ số Hiệu suất</h1>
+            <p class="hero-text">Hệ thống theo dõi tiến độ đa chu kỳ, đối sánh buổi tập và chuẩn hóa kỹ thuật form qua thị giác máy tính.</p>
+        </div>
+        <div class="hero-right">
+            <div class="hero-mini-card">
+                <div class="mini-label">Chu kỳ tuần</div>
+                <div class="mini-number" id="analyticsWeekRange">{{ dashboard.week_start }} đến {{ dashboard.week_end }}</div>
+            </div>
+            <div class="hero-mini-card">
+                <div class="mini-label">Mục tiêu tuần</div>
+                <div class="mini-number" id="analyticsWeekStatus">{{ 'Đạt kế hoạch' if dashboard.weekly_completed else 'Đang thực hiện' }}</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- KPI Quick Metrics Strip -->
+    <section class="kpi-row-grid">
+        <div class="kpi-sport-card highlight">
+            <span class="kpi-title">Tổng Rep Tuần</span>
+            <strong class="kpi-value" id="analyticsProgressNumber">{{ dashboard.done_count }}/{{ dashboard.weekly_target }}</strong>
+            <span class="kpi-sub" id="analyticsProgressText">{{ dashboard.progress_percent }}% kế hoạch tuần</span>
+        </div>
+        <div class="kpi-sport-card">
+            <span class="kpi-title">Năng lượng tiêu thụ</span>
+            <strong class="kpi-value" id="analyticsCalories">{{ dashboard.calories }} <span style="font-size:14px;color:#ff5722;">kcal</span></strong>
+            <span class="kpi-sub">Theo dõi theo buổi tập</span>
+        </div>
+        <div class="kpi-sport-card">
+            <span class="kpi-title">Lỗi kỹ thuật cần chỉnh</span>
+            <strong class="kpi-value" id="analyticsTotalErrors" style="color:#ffb300;">{{ dashboard.total_errors }}</strong>
+            <span class="kpi-sub">Số lần AI phát hiện nhắc nhở</span>
+        </div>
+        <div class="kpi-sport-card">
+            <span class="kpi-title">Lịch tập đã hoàn thành</span>
+            <strong class="kpi-value"><span id="analyticsSchedulePerformed">{{ dashboard.schedule_performed_count }}</span> / <span id="analyticsSchedulePlanned">{{ dashboard.schedule_planned_count }}</span></strong>
+            <span class="kpi-sub" id="analyticsSchedulePercent">{{ dashboard.schedule_completion_percent }}% tuân thủ lịch</span>
+        </div>
+    </section>
+
+    <!-- Chart 1: Tiến độ và Khối lượng Đa Chu kỳ (Ngày / Tuần / Tháng / Năm) -->
+    <section class="panel analytics-visual-panel" style="margin-top:24px;">
+        <div class="panel-head">
+            <div>
+                <p class="panel-tag">Xu hướng phát triển thể chất</p>
+                <h2>Khối lượng Rep & Tỷ lệ Chuẩn form theo Thời gian</h2>
+            </div>
+            <div class="analytics-tabs" role="tablist">
+                <button class="analytics-tab active" type="button" data-period="daily">14 Ngày</button>
+                <button class="analytics-tab" type="button" data-period="weekly">8 Tuần</button>
+                <button class="analytics-tab" type="button" data-period="monthly">12 Tháng</button>
+                <button class="analytics-tab" type="button" data-period="yearly">Theo Năm</button>
+            </div>
+        </div>
+        <div class="chart-canvas-container" style="min-height:300px;">
+            <canvas id="timelineComboChart"></canvas>
+        </div>
+    </section>
+
+    <!-- Chart 2: Đối sánh Chi tiết Giữa các Buổi tập (Session-to-Session Comparison) -->
+    <section class="panel" style="margin-top:24px;">
+        <div class="panel-head">
+            <div>
+                <p class="panel-tag">So sánh chi tiết</p>
+                <h2>Đối sánh Hiệu suất giữa Các Buổi tập Gần nhất</h2>
+            </div>
+            <span class="chart-badge-tag">So sánh từng buổi</span>
+        </div>
+        <div class="chart-canvas-container" style="min-height:280px;">
+            <canvas id="sessionComparisonChart"></canvas>
+        </div>
+    </section>
+
+    <!-- Chart 3 & 4: Phân bố Lỗi Form và Radar Năng lực Thể chất -->
+    <section class="chart-grid-2col">
+        <!-- Error Distribution Doughnut Chart -->
+        <div class="panel">
+            <div class="chart-card-head">
+                <div>
+                    <p class="panel-tag">Kiểm soát kỹ thuật</p>
+                    <h3>Phân bố Tỷ lệ Lỗi Thường gặp</h3>
+                </div>
+                <span class="chart-badge-tag" style="background:rgba(255,179,0,0.12);color:#ffb300;border-color:rgba(255,179,0,0.3);">Cảnh báo AI</span>
+            </div>
+            <div class="chart-canvas-container" style="min-height:280px;">
+                <canvas id="errorDistributionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Athletic Fitness Radar Chart -->
+        <div class="panel">
+            <div class="chart-card-head">
+                <div>
+                    <p class="panel-tag">Đánh giá toàn diện</p>
+                    <h3>Radar Đánh giá Năng lực Thể chất</h3>
+                </div>
+                <span class="chart-badge-tag" style="background:rgba(0,230,118,0.12);color:#00e676;border-color:rgba(0,230,118,0.3);">5 Khía cạnh</span>
+            </div>
+            <div class="chart-canvas-container" style="min-height:280px;">
+                <canvas id="fitnessRadarChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Session History Table -->
+    <section class="analysis-wrap single-column-grid" style="margin-top:24px;">
+        <div class="panel analytics-history-panel dashboard-wide-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="panel-tag">Dữ liệu chi tiết</p>
+                    <h2>Lịch sử các Buổi tập Gần đây</h2>
+                </div>
+            </div>
+            <div class="exercise-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Bài tập</th>
+                            <th>Ngày tập</th>
+                            <th>Cấp độ</th>
+                            <th>Tổng rep</th>
+                            <th>Rep đạt</th>
+                            <th>Lỗi</th>
+                            <th>Điểm Form</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analyticsSessionBody">
+                        {% if recent_sessions %}
+                            {% for item in recent_sessions %}
+                            <tr>
+                                <td>{{ item.created_at }}</td>
+                                <td><strong style="color:#f8fafc;">{{ item.exercise_name }}</strong></td>
+                                <td>{{ item.session_date }}</td>
+                                <td><span class="difficulty-pill" style="font-size:11px;">{{ item.training_level_label or 'Trung bình' }}</span></td>
+                                <td>{{ item.total_rep }}</td>
+                                <td><span style="color:#00e676;font-weight:700;">{{ item.good_rep }}</span></td>
+                                <td><span style="color:#ff3d71;">{{ item.total_error }}</span></td>
+                                <td><strong>{{ item.quality_score_avg }}</strong>/100</td>
+                                <td>{{ (item.keypoint_confidence_avg * 100) | round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="9">Chưa có dữ liệu buổi tập trong tuần này.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+let analyticsTrends = {{ analytics_trends | tojson }};
+let activePeriod = 'daily';
+
+// Chart instances
+let timelineChart = null;
+let sessionChart = null;
+let errorChart = null;
+let radarChart = null;
+
+// Global Chart.js defaults for sleek dark athletic look
+if (window.Chart) {
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#131b2e';
+    Chart.defaults.plugins.tooltip.titleColor = '#f8fafc';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 87, 34, 0.3)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+}
+
+// 1. Render Timeline Combo Chart (Reps as bars, Success rate & Quality as lines)
+function renderTimelineChart(period = activePeriod) {
+    activePeriod = period;
+    document.querySelectorAll('.analytics-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.period === period));
+    
+    const items = (analyticsTrends && analyticsTrends[period]) || [];
+    const canvas = document.getElementById('timelineComboChart');
+    if (!canvas) return;
+
+    const labels = items.map(it => it.label);
+    const totalReps = items.map(it => it.total_rep);
+    const goodReps = items.map(it => it.good_rep);
+    const successRates = items.map(it => it.success_rate);
+    const qualityScores = items.map(it => it.quality);
+
+    if (timelineChart) timelineChart.destroy();
+
+    timelineChart = new Chart(canvas, {
+        data: {
+            labels: labels.length ? labels : ['Chưa có dữ liệu'],
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Rep đạt chuẩn',
+                    data: goodReps,
+                    backgroundColor: 'rgba(0, 230, 118, 0.75)',
+                    borderRadius: 6,
+                    barPercentage: 0.5,
+                    order: 2,
+                    yAxisID: 'yReps'
+                },
+                {
+                    type: 'bar',
+                    label: 'Tổng Rep thực hiện',
+                    data: totalReps,
+                    backgroundColor: 'rgba(255, 87, 34, 0.35)',
+                    borderColor: 'rgba(255, 87, 34, 0.8)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    barPercentage: 0.5,
+                    order: 3,
+                    yAxisID: 'yReps'
+                },
+                {
+                    type: 'line',
+                    label: 'Tỷ lệ đạt (%)',
+                    data: successRates,
+                    borderColor: '#00d2ff',
+                    backgroundColor: '#00d2ff',
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                    order: 1,
+                    yAxisID: 'yRate'
+                },
+                {
+                    type: 'line',
+                    label: 'Điểm kỹ thuật',
+                    data: qualityScores,
+                    borderColor: '#ffb300',
+                    backgroundColor: '#ffb300',
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    pointRadius: 3,
+                    tension: 0.2,
+                    order: 1,
+                    yAxisID: 'yRate'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                },
+                yReps: {
+                    type: 'linear',
+                    position: 'left',
+                    title: { display: true, text: 'Số lượng Rep', color: '#ff5722' },
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    beginAtZero: true
+                },
+                yRate: {
+                    type: 'linear',
+                    position: 'right',
+                    title: { display: true, text: 'Tỷ lệ % / Điểm', color: '#00d2ff' },
+                    grid: { drawOnChartArea: false },
+                    min: 0,
+                    max: 100
+                }
+            }
+        }
+    });
+}
+
+// 2. Render Session Comparison Chart
+function renderSessionComparisonChart() {
+    const sessions = (analyticsTrends && analyticsTrends.session_comparison) || [];
+    const canvas = document.getElementById('sessionComparisonChart');
+    if (!canvas) return;
+
+    const labels = sessions.map(s => s.label);
+    const goodReps = sessions.map(s => s.good_rep);
+    const errors = sessions.map(s => s.errors);
+    const quality = sessions.map(s => s.quality);
+
+    if (sessionChart) sessionChart.destroy();
+
+    sessionChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels.length ? labels : ['Chưa có buổi tập'],
+            datasets: [
+                {
+                    label: 'Rep đạt',
+                    data: goodReps,
+                    backgroundColor: '#00e676',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Số lần sai lỗi',
+                    data: errors,
+                    backgroundColor: '#ff3d71',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Điểm Form',
+                    data: quality,
+                    backgroundColor: '#ffb300',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+// 3. Render Error Distribution Doughnut Chart
+function renderErrorChart() {
+    const errData = (analyticsTrends && analyticsTrends.error_distribution) || { labels: [], counts: [] };
+    const canvas = document.getElementById('errorDistributionChart');
+    if (!canvas) return;
+
+    if (errorChart) errorChart.destroy();
+
+    errorChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: errData.labels,
+            datasets: [{
+                data: errData.counts,
+                backgroundColor: [
+                    '#ff5722',
+                    '#ffb300',
+                    '#00d2ff',
+                    '#ff3d71',
+                    '#94a3b8'
+                ],
+                borderWidth: 2,
+                borderColor: '#131b2e'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 12 }
+                }
+            },
+            cutout: '68%'
+        }
+    });
+}
+
+// 4. Render Athletic Fitness Radar Chart
+function renderRadarChart() {
+    const radar = (analyticsTrends && analyticsTrends.radar) || { labels: [], values: [] };
+    const canvas = document.getElementById('fitnessRadarChart');
+    if (!canvas) return;
+
+    if (radarChart) radarChart.destroy();
+
+    radarChart = new Chart(canvas, {
+        type: 'radar',
+        data: {
+            labels: radar.labels,
+            datasets: [{
+                label: 'Năng lực thể chất cá nhân',
+                data: radar.values,
+                backgroundColor: 'rgba(255, 87, 34, 0.25)',
+                borderColor: '#ff5722',
+                borderWidth: 2,
+                pointBackgroundColor: '#00d2ff',
+                pointBorderColor: '#fff',
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                    pointLabels: { color: '#f8fafc', font: { size: 11, weight: 'bold' } },
+                    suggestedMin: 30,
+                    suggestedMax: 100,
+                    ticks: { display: false }
+                }
+            }
+        }
+    });
+}
+
+// Event Listeners for Period Tabs
+document.querySelectorAll('.analytics-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        renderTimelineChart(btn.dataset.period);
+    });
+});
+
+// Initial Render of All Charts
+window.addEventListener('DOMContentLoaded', () => {
+    renderTimelineChart();
+    renderSessionComparisonChart();
+    renderErrorChart();
+    renderRadarChart();
+});
+
+// Periodic polling for live analytics updates
+async function pollWeeklyAnalytics() {
+    try {
+        const res = await fetch("{{ url_for('weekly_summary_api') }}");
+        const data = await res.json();
+        if (!data.success) return;
+        const d = data.dashboard;
+        if (data.analytics_trends) {
+            analyticsTrends = data.analytics_trends;
+            renderTimelineChart(activePeriod);
+            renderSessionComparisonChart();
+            renderErrorChart();
+            renderRadarChart();
+        }
+        const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+        setText('analyticsWeekRange', `${d.week_start} đến ${d.week_end}`);
+        setText('analyticsWeekStatus', d.weekly_completed ? 'Đạt kế hoạch' : 'Đang thực hiện');
+        setText('analyticsProgressNumber', `${d.done_count}/${d.weekly_target}`);
+        setText('analyticsProgressText', `${d.progress_percent}% kế hoạch tuần`);
+        setText('analyticsTotalErrors', d.total_errors);
+        setText('analyticsSchedulePerformed', d.schedule_performed_count || 0);
+        setText('analyticsSchedulePlanned', d.schedule_planned_count || 0);
+        setText('analyticsSchedulePercent', `${Number(d.schedule_completion_percent || 0).toFixed(1)}% tuân thủ lịch`);
+    } catch (e) {
+        console.warn('Khong the cap nhat live analytics', e);
+    }
+}
+setInterval(pollWeeklyAnalytics, 3000);
+</script>
+{% endblock %}

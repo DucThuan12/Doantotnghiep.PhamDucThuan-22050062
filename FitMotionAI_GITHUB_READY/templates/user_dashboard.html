@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="topbar modern-topbar">
+    <div class="brand-wrap">
+        <a class="brand-link" href="{{ url_for('home') }}">
+            <div class="brand-badge small">FitMotion AI</div>
+        </a>
+    </div>
+
+    <nav class="nav-center modern-nav">
+        <a class="nav-link active" href="{{ url_for('user_dashboard') }}">Tổng quan</a>
+        <a class="nav-link" href="{{ url_for('user_schedule') }}">Lịch tập</a>
+        <a class="nav-link" href="{{ url_for('user_programs') }}">Giáo án</a>
+        <a class="nav-link" href="{{ url_for('user_exercises') }}">Động tác</a>
+        <a class="nav-link" href="{{ url_for('user_workout_redirect') }}">Luyện tập</a>
+        <a class="nav-link" href="{{ url_for('user_analytics') }}">Phân tích</a>
+        <a class="nav-link" href="{{ url_for('user_profile') }}">Hồ sơ</a>
+    </nav>
+
+    <div class="user-menu glass-chip">
+        <span>{{ user.name }}</span>
+        <a href="{{ url_for('logout') }}">Đăng xuất</a>
+    </div>
+</header>
+
+<main class="dashboard-page">
+    <section class="hero-panel">
+        <div class="hero-left">
+            <p class="eyebrow">Hồ sơ luyện tập</p>
+            <h1>Bảng điều khiển người dùng</h1>
+            <p class="hero-text">
+                Theo dõi tiến độ, lịch tập, lỗi kỹ thuật và phân tích vận động
+                trong một không gian trực quan hơn.
+            </p>
+        </div>
+
+        <div class="hero-right">
+            <div class="hero-mini-card">
+                <div class="mini-label">Mục tiêu</div>
+                <div class="mini-number">{{ profile_goal_label if profile_goal_label else 'Tập nhẹ' }}</div>
+            </div>
+            <div class="hero-mini-card">
+                <div class="mini-label">Thể trạng</div>
+                <div class="mini-number">{{ profile_health_label if profile_health_label else 'Chưa cập nhật' }}</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- KHÔI PHỤC BLOCK MỤC TIÊU HÔM NAY -->
+    <section class="panel" style="margin-bottom: 24px;">
+        <div class="panel-head">
+            <div>
+                <p class="panel-tag">Mục tiêu hôm nay</p>
+                <h2>Theo dõi rep trong ngày</h2>
+            </div>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span>Rep mục tiêu</span>
+                <strong id="todayTargetValue">{{ dashboard.today_target }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Đã tập hôm nay</span>
+                <strong id="todayDoneValue">{{ dashboard.today_done }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Còn thiếu</span>
+                <strong id="todayRemainingValue">{{ dashboard.today_remaining }}</strong>
+            </div>
+        </div>
+
+        <div
+            id="todayGoalAlert"
+            class="goal-alert {% if dashboard.today_completed %}goal-alert-success{% else %}goal-alert-warning{% endif %}"
+            style="margin-top: 16px;"
+        >
+            {% if dashboard.today_completed %}
+                Bạn đã hoàn thành mục tiêu rep hôm nay. Có thể nghỉ hoặc tập thêm bài khác.
+            {% else %}
+                Hôm nay bạn chưa tập đủ rep mục tiêu. Hãy tiếp tục hoàn thành {{ dashboard.today_remaining }} rep còn lại.
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="dashboard-grid">
+        <div class="panel large-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="panel-tag">Lịch luyện tập</p>
+                    <h2>Kế hoạch trong tuần</h2>
+                </div>
+                <div class="dashboard-panel-actions">
+                    <a class="btn btn-outline btn-schedule-primary" href="{{ url_for('user_schedule') }}">Sắp lịch tuần/tháng</a>
+                    <a class="btn btn-primary" href="{{ url_for('user_workout_redirect') }}">Bắt đầu buổi tập</a>
+                </div>
+            </div>
+
+            <div class="week-row modern-week">
+                {% for day in week_schedule %}
+                <a href="{{ url_for('user_dashboard', date=day.date) }}"
+                   class="day-card {% if day.selected %}active{% endif %}"
+                   data-week-date="{{ day.date }}"
+                   style="text-decoration:none;">
+                    <div class="day-date">{{ day.short }}</div>
+                    <div class="day-metric" id="weekCount-{{ day.date }}">{{ day.count }} bài</div>
+                    <div class="day-sub" id="weekKcal-{{ day.date }}">{{ day.kcal }} kcal</div>
+                </a>
+                {% endfor %}
+            </div>
+
+            <div class="summary-row">
+                <div class="summary-box">
+                    <span>Động tác ngày chọn</span>
+                    <strong id="selectedExerciseCount">{{ day_detail.exercise_count }}</strong>
+                </div>
+                <div class="summary-box">
+                    <span>Kcal ngày chọn</span>
+                    <strong id="selectedKcal">{{ day_detail.total_kcal }}</strong>
+                </div>
+                <div class="summary-box">
+                    <span>Ngày đang xem</span>
+                    <strong>{{ selected_date }}</strong>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top:18px; padding:18px;">
+                <div class="panel-head">
+                    <div>
+                        <p class="panel-tag">Chi tiết theo ngày</p>
+                        <h2>{{ selected_date }}</h2>
+                    </div>
+                </div>
+
+                <div id="dayPlanDetail">
+                {% if day_detail.exercise_items %}
+                <div class="exercise-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Bài tập</th>
+                                <th>Set</th>
+                                <th>Rep mục tiêu</th>
+                                <th>Cấp độ</th>
+                                <th>Kcal</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in day_detail.exercise_items %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.set_count }}</td>
+                                <td>{{ item.rep_target }}</td>
+                                <td>{{ item.training_level_label or 'Trung bình' }}</td>
+                                <td>{{ item.kcal }}</td>
+                                <td>{{ item.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="criterion-card">
+                    Chưa có bài tập nào được lên lịch cho ngày này.
+                </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="panel side-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="panel-tag">Tiến độ</p>
+                    <h2>Trạng thái hiện tại</h2>
+                </div>
+            </div>
+
+            <div class="progress-ring-box">
+                <div class="progress-number" id="dashboardProgressNumber">{{ dashboard.done_count }}/{{ dashboard.weekly_target }}</div>
+                <div class="progress-text" id="dashboardProgressText">{{ dashboard.progress_percent }}% hoàn thành</div>
+            </div>
+
+            <div class="side-stats">
+                <div class="side-stat">
+                    <span>Tổng bài đã tập</span>
+                    <strong id="dashboardTotalPlans">{{ dashboard.total_plans }}</strong>
+                </div>
+                <div class="side-stat">
+                    <span>Tổng lỗi</span>
+                    <strong id="dashboardTotalErrors">{{ dashboard.total_errors }}</strong>
+                </div>
+                <div class="side-stat">
+                    <span>Calo đã đốt</span>
+                    <strong id="dashboardCalories">{{ dashboard.calories }}</strong>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top:18px; padding:18px;">
+                <div class="panel-head">
+                    <div>
+                        <p class="panel-tag">Thực hiện trong ngày</p>
+                        <h2>{{ selected_date }}</h2>
+                    </div>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span>Tổng rep</span>
+                        <strong id="selectedTotalRep">{{ day_detail.total_rep }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Rep đạt</span>
+                        <strong id="selectedGoodRep">{{ day_detail.good_rep }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Tổng lỗi</span>
+                        <strong id="selectedTotalError">{{ day_detail.total_error }}</strong>
+                    </div>
+                </div>
+
+                <div id="daySessionDetail">
+                {% if day_detail.sessions %}
+                <div class="criterion-list" style="margin-top:16px;">
+                    {% for s in day_detail.sessions %}
+                    <div class="criterion-item">
+                        <div class="criterion-head">
+                            <strong>{{ s.exercise_name }}</strong>
+                        </div>
+                        <p>Tổng rep: {{ s.total_rep }} | Rep đạt: {{ s.good_rep }} | Lỗi: {{ s.total_error }} | Cấp độ: {{ s.training_level_label or 'Trung bình' }}</p>
+                        <p>Điểm chất lượng TB: {{ '%.1f'|format(s.quality_score_avg or 0) }}/100 | Confidence keypoint: {{ '%.1f'|format((s.keypoint_confidence_avg or 0) * 100) }}%</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="criterion-card" style="margin-top:16px;">
+                    Chưa có dữ liệu buổi tập nào trong ngày này.
+                </div>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="analysis-wrap single-column-grid">
+        <div class="panel dashboard-wide-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="panel-tag">Thống kê</p>
+                    <h2>Dữ liệu luyện tập</h2>
+                </div>
+                <a class="btn btn-primary" href="{{ url_for('user_analytics') }}">Xem chi tiết</a>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-card dark-accent">
+                    <span>Tiến độ hiện tại</span>
+                    <strong id="dashboardBottomProgress">{{ dashboard.done_count }}/{{ dashboard.weekly_target }}</strong>
+                    <small id="dashboardBottomProgressText">{{ dashboard.progress_percent }}% kế hoạch</small>
+                </div>
+                <div class="stat-card">
+                    <span>Số bài đã tập</span>
+                    <strong id="dashboardBottomPlans">{{ dashboard.total_plans }}</strong>
+                    <small>Theo lịch tuần</small>
+                </div>
+                <div class="stat-card">
+                    <span>Tổng lỗi</span>
+                    <strong id="dashboardBottomErrors">{{ dashboard.total_errors }}</strong>
+                    <small>Lần thực hiện chưa đạt</small>
+                </div>
+                <div class="stat-card">
+                    <span>Calo đã đốt</span>
+                    <strong id="dashboardBottomCalories">{{ dashboard.calories }}</strong>
+                    <small>Đơn vị kcal</small>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+const selectedDashboardDate = {{ selected_date | tojson }};
+const dashboardSummaryUrl = new URL("{{ url_for('weekly_summary_api') }}", window.location.origin);
+dashboardSummaryUrl.searchParams.set("date", selectedDashboardDate);
+
+function escapeDashboardHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function renderDayPlanDetail(detail) {
+    const container = document.getElementById("dayPlanDetail");
+    if (!container) return;
+    const items = Array.isArray(detail.exercise_items) ? detail.exercise_items : [];
+    if (!items.length) {
+        container.innerHTML = '<div class="criterion-card">Chưa có bài tập nào được lên lịch hoặc thực hiện trong ngày này.</div>';
+        return;
+    }
+    const rows = items.map((item) => `
+        <tr>
+            <td>${escapeDashboardHtml(item.name)}</td>
+            <td>${Number(item.set_count || 0)}</td>
+            <td>${Number(item.rep_target || 0)}</td>
+            <td>${escapeDashboardHtml(item.training_level_label || 'Trung bình')}</td>
+            <td>${Number(item.kcal || 0).toFixed(2)}</td>
+            <td>${escapeDashboardHtml(item.status)}</td>
+        </tr>`).join("");
+    container.innerHTML = `
+        <div class="exercise-table">
+            <table>
+                <thead><tr><th>Bài tập</th><th>Set</th><th>Rep mục tiêu/thực tế</th><th>Cấp độ</th><th>Kcal</th><th>Trạng thái</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+}
+
+function renderDaySessionDetail(detail) {
+    const container = document.getElementById("daySessionDetail");
+    if (!container) return;
+    const sessions = Array.isArray(detail.sessions) ? detail.sessions : [];
+    if (!sessions.length) {
+        container.innerHTML = '<div class="criterion-card" style="margin-top:16px;">Chưa có dữ liệu buổi tập nào trong ngày này.</div>';
+        return;
+    }
+    container.innerHTML = `<div class="criterion-list" style="margin-top:16px;">${sessions.map((item) => `
+        <div class="criterion-item">
+            <div class="criterion-head"><strong>${escapeDashboardHtml(item.exercise_name)}</strong></div>
+            <p>Tổng rep: ${Number(item.total_rep || 0)} | Rep đạt: ${Number(item.good_rep || 0)} | Lỗi: ${Number(item.total_error || 0)} | Cấp độ: ${escapeDashboardHtml(item.training_level_label || 'Trung bình')}</p>
+            <p>Điểm chất lượng TB: ${Number(item.quality_score_avg || 0).toFixed(1)}/100 | Confidence keypoint: ${(Number(item.keypoint_confidence_avg || 0) * 100).toFixed(1)}%</p>
+        </div>`).join("")}</div>`;
+}
+
+async function pollDashboardWeeklySummary() {
+    try {
+        const res = await fetch(dashboardSummaryUrl.toString(), { cache: "no-store" });
+        const data = await res.json();
+        if (!data.success) return;
+
+        const d = data.dashboard;
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        const weekSchedule = Array.isArray(data.week_schedule) ? data.week_schedule : [];
+        weekSchedule.forEach((day) => {
+            setText(`weekCount-${day.date}`, `${Number(day.count || 0)} bài`);
+            setText(`weekKcal-${day.date}`, `${Number(day.kcal || 0).toFixed(2)} kcal`);
+        });
+        const detail = data.day_detail || {};
+        setText("selectedExerciseCount", Number(detail.exercise_count || 0));
+        setText("selectedKcal", Number(detail.total_kcal || 0).toFixed(2));
+        setText("selectedTotalRep", Number(detail.total_rep || 0));
+        setText("selectedGoodRep", Number(detail.good_rep || 0));
+        setText("selectedTotalError", Number(detail.total_error || 0));
+        renderDayPlanDetail(detail);
+        renderDaySessionDetail(detail);
+
+        setText("todayTargetValue", d.today_target);
+        setText("todayDoneValue", d.today_done);
+        setText("todayRemainingValue", d.today_remaining);
+
+        const todayAlert = document.getElementById("todayGoalAlert");
+        if (todayAlert) {
+            if (d.today_completed) {
+                todayAlert.textContent = "Bạn đã hoàn thành mục tiêu rep hôm nay. Có thể nghỉ hoặc tập thêm bài khác.";
+                todayAlert.classList.add("goal-alert-success");
+                todayAlert.classList.remove("goal-alert-warning");
+            } else {
+                todayAlert.textContent = `Hôm nay bạn chưa tập đủ rep mục tiêu. Hãy tiếp tục hoàn thành ${d.today_remaining} rep còn lại.`;
+                todayAlert.classList.add("goal-alert-warning");
+                todayAlert.classList.remove("goal-alert-success");
+            }
+        }
+
+        setText("dashboardProgressNumber", `${d.done_count}/${d.weekly_target}`);
+        setText("dashboardProgressText", `${d.progress_percent}% hoàn thành`);
+        setText("dashboardTotalPlans", d.total_plans);
+        setText("dashboardTotalErrors", d.total_errors);
+        setText("dashboardCalories", d.calories);
+
+        setText("dashboardBottomProgress", `${d.done_count}/${d.weekly_target}`);
+        setText("dashboardBottomProgressText", `${d.progress_percent}% kế hoạch`);
+        setText("dashboardBottomPlans", d.total_plans);
+        setText("dashboardBottomErrors", d.total_errors);
+        setText("dashboardBottomCalories", d.calories);
+
+        setText("dashboardStartErrors", d.start_errors);
+        setText("dashboardMiddleErrors", d.middle_errors);
+        setText("dashboardEndErrors", d.end_errors);
+    } catch (err) {
+        console.log("Không cập nhật được dashboard realtime", err);
+    }
+}
+
+let dashboardPollRunning = false;
+async function refreshDashboardSafely() {
+    if (dashboardPollRunning || document.hidden) return;
+    dashboardPollRunning = true;
+    try { await pollDashboardWeeklySummary(); } finally { dashboardPollRunning = false; }
+}
+refreshDashboardSafely();
+setInterval(refreshDashboardSafely, 8000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshDashboardSafely(); });
+window.addEventListener("focus", refreshDashboardSafely);
+</script>
+{% endblock %}
