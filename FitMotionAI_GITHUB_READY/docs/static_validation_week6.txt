@@ -1,4 +1,0 @@
-Python compile: PASS (26 files)
-Jinja parse: PASS (14/14 templates)
-Inline JavaScript syntax: PASS (3 blocks)
-SQLite integrity: ok

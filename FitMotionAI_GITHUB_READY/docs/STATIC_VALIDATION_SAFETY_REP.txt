@@ -1,8 +1,0 @@
-[PASS] Python compileall
-[PASS] Jinja templates - 14 parsed
-[PASS] Inline JavaScript - 3 blocks
-[PASS] SQLite integrity/schema - ok
-[PASS] Validation JSON - 1 files
-[PASS] Canonical pipeline and server-authoritative metrics
-
-STATIC VALIDATION: PASS
